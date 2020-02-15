@@ -54,7 +54,7 @@ struct Unit {
 struct Params {
   double splitProb;  // probability that a move is a split, given that the Unit is paired
   double stackEnergy, auEnergy, gcEnergy, guEnergy, temp;  // simplified basepair stacking model
-  Params() : splitProb(.1), stackEnergy(1), auEnergy(1), gcEnergy(2), guEnergy(.5), temp(1) { }
+  Params() : splitProb(.5), stackEnergy(1), auEnergy(-.5), gcEnergy(.5), guEnergy(-1), temp(.1) { }
   static Params fromJson (json&);
   json toJson() const;
 };
@@ -119,15 +119,39 @@ struct Board {
   inline bool indicesPaired (int i, int j) const {
     return i >= 0 && j >= 0 && boardCoordsEqual (unit[i].pos, unit[j].pos);
   }
-  inline bool canMerge (const Unit& u, const Unit& v, mt19937& mt) {
+  inline bool canMerge (const Unit& u, const Unit& v) const {
     return !(u.next == v.index || v.next == u.index)
       && u.isComplementOrWobble(v)
-      && !indicesPaired (u.prev, v.prev)  // disallow parallel stacking
-      && !indicesPaired (u.next, v.next)  // disallow parallel stacking
       && u.next != v.index  // disallow neighbors
       && v.next != u.index
       && u.next != v.prev  // disallow next-but-one neighbors
-      && u.prev != v.next;
+      && u.prev != v.next
+      && !indicesPaired (u.prev, v.prev)  // disallow parallel stacking
+      && !indicesPaired (u.next, v.next);
+  }
+  inline double pairingEnergy (const Unit& u, const Unit& v) const {
+    double e = 0;
+    const int bprod = u.base * v.base;
+    switch (bprod) {
+    case 0: e += params.auEnergy; break;
+    case 2: e += params.gcEnergy; break;
+    case 6: e += params.guEnergy; break;
+    default: throw runtime_error("Not a basepair"); break;
+    }
+    if (indicesPaired (u.prev, v.next)) {
+      e += params.stackEnergy;
+      //      cerr << "stack!" << endl;
+    }
+    if (indicesPaired (u.next, v.prev)) {
+      e += params.stackEnergy;
+      //      cerr << "stack!" << endl;
+    }
+    return e;
+  }
+  inline bool acceptMove (double energyDelta, double fwdBackRatio, mt19937& mt) {
+    const double p = exp (energyDelta / params.temp) / fwdBackRatio;
+    //    cerr << "delta=" << energyDelta << " ratio=" << fwdBackRatio << " p=" << p << endl;
+    return p >= 1 || dist(mt) < p;
   }
   inline void moveUnit (Unit& u, const Vec& pos, bool rev) {
     //    cerr << "before move..." << endl; dump(cerr);

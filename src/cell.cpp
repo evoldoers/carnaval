@@ -150,24 +150,29 @@ bool Board::tryMove (mt19937& mt) {
       const int nbrPairIndex = cell (newPos, true);
       if (isPaired (u)) {
 	Unit& p = unit[pairedIndex(u)];
+	const double oldEnergy = pairingEnergy (u, p);
 	//	cerr << "Paired unit is at " << p.pos << endl;
 	if (dist(mt) < params.splitProb) {
 	  // attempt split
 	  //	  cerr << "Attempting split" << endl;
 	  if (nbrIndex < 0) {
-	    // split and move to forward slot
-	    moveUnit (u, newPos, false);
-	    moveUnit (p, p.pos, false);
-	    //	    cerr << "Paired unit is now at " << p.pos << "." << p.rev << endl;
-	    moved = true;
+	    if (acceptMove (-oldEnergy, params.splitProb, mt)) {
+	      // split and move to forward slot
+	      moveUnit (u, newPos, false);
+	      moveUnit (p, p.pos, false);
+	      //	    cerr << "Paired unit is now at " << p.pos << "." << p.rev << endl;
+	      moved = true;
+	    }
 	  } else {
 	    Unit& nbr = unit[nbrIndex];
-	    if (nbrPairIndex < 0 && canMerge (u, nbr, mt)) {
-	      // split and move to rev slot
-	      moveUnit (u, newPos, true);
-	      moveUnit (p, p.pos, false);
-	      //	      cerr << "Paired unit is now at " << p.pos << "." << p.rev << endl;
-	      moved = true;
+	    if (nbrPairIndex < 0 && canMerge (u, nbr)) {
+	      if (acceptMove (pairingEnergy(u,nbr) - oldEnergy, 1, mt)) {
+		// split and move to rev slot
+		moveUnit (u, newPos, true);
+		moveUnit (p, p.pos, false);
+		//	      cerr << "Paired unit is now at " << p.pos << "." << p.rev << endl;
+		moved = true;
+	      }
 	    }
 	  }
 	} else {  // paired and not attempting split
@@ -186,10 +191,12 @@ bool Board::tryMove (mt19937& mt) {
 	  moved = true;
 	} else {
 	  Unit& nbr = unit[nbrIndex];
-	  if (nbrPairIndex < 0 && canMerge (u, nbr, mt)) {
-	    // move to rev slot
-	    moveUnit (u, newPos, true);
-	    moved = true;
+	  if (nbrPairIndex < 0 && canMerge (u, nbr)) {
+	    if (acceptMove (pairingEnergy(u,nbr), 1. / params.splitProb, mt)) {
+	      // move to rev slot
+	      moveUnit (u, newPos, true);
+	      moved = true;
+	    }
 	  }
 	}
       }

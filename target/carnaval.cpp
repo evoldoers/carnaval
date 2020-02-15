@@ -27,6 +27,7 @@ int main (int argc, char** argv) {
       ("rnd,r",  po::value<int>(), "seed random number generator")
       ("total-moves,t",  po::value<int>()->default_value(0), "total number of moves")
       ("unit-moves,u",  po::value<int>()->default_value(0), "number of moves per unit")
+      ("temp,T",  po::value<double>(), "specify temperature")
       ("load,l", po::value<string>(), "load board state from file")
       ("save,s", po::value<string>(), "save board state to file")
       ;
@@ -64,6 +65,9 @@ int main (int argc, char** argv) {
 
     if (vm.count("init"))
       board.addSeq (vm.at("init").as<string>());
+
+    if (vm.count("temp"))
+      board.params.temp = vm.at("temp").as<double>();
 
     const int moves = vm.at("total-moves").as<int>() + board.unit.size() * vm.at("unit-moves").as<int>();
     int succeeded = 0;
