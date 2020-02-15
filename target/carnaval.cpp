@@ -25,8 +25,9 @@ int main (int argc, char** argv) {
       ("zsize,z", po::value<int>()->default_value(1), "size of board in Z dimension")
       ("init,i",  po::value<string>(), "specify initial sequence")
       ("rnd,r",  po::value<int>(), "seed random number generator")
-      ("total-moves,t",  po::value<int>()->default_value(0), "total number of moves")
-      ("unit-moves,u",  po::value<int>()->default_value(0), "number of moves per unit")
+      ("total-moves,t",  po::value<long>()->default_value(0), "total number of moves")
+      ("unit-moves,u",  po::value<long>()->default_value(0), "number of moves per unit")
+      ("folds,f", "report fold strings every 1000 moves")
       ("temp,T",  po::value<double>(), "specify temperature")
       ("load,l", po::value<string>(), "load board state from file")
       ("save,s", po::value<string>(), "save board state to file")
@@ -69,11 +70,15 @@ int main (int argc, char** argv) {
     if (vm.count("temp"))
       board.params.temp = vm.at("temp").as<double>();
 
-    const int moves = vm.at("total-moves").as<int>() + board.unit.size() * vm.at("unit-moves").as<int>();
+    const long moves = vm.at("total-moves").as<long>() + board.unit.size() * vm.at("unit-moves").as<long>();
+    const bool reportFolds = vm.count("folds");
     int succeeded = 0;
-    for (int move = 0; move < moves; ++move)
+    for (long move = 0; move < moves; ++move) {
       if (board.tryMove (mt))
 	++succeeded;
+      if (reportFolds && move % 1000 == 0)
+	cerr << "Move " << move << ": " << board.foldString() << endl;
+    }
 
     if (moves)
       cerr << "Tried " << moves << " moves, " << succeeded << " succeeded" << endl;
