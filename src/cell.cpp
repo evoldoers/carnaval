@@ -112,7 +112,7 @@ void Board::assertValid() const {
 	    const Unit u = unit[idx];
 	    if (u.index != idx)
 	      throw runtime_error ("Incorrect Unit index");
-	    if (x != u.pos.x() || y != u.pos.y() || z != u.pos.z() || (rev ? !u.rev : u.rev))
+	    if (!boardCoordsEqual (Vec(x,y,z), u.pos) || (rev ? !u.rev : u.rev))
 	      throw runtime_error ("Mislocated Unit");
 	    if (u.prev >= 0 && unit[u.prev].next != idx)
 	      throw runtime_error ("Broken Unit.prev");

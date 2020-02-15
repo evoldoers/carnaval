@@ -20,7 +20,6 @@ struct Vec {
   inline int& z() { return xyz[2]; }
   inline Vec operator+ (const Vec& d) const { return Vec (x()+d.x(), y()+d.y(), z()+d.z()); }
   inline Vec operator- (const Vec& d) const { return Vec (x()-d.x(), y()-d.y(), z()-d.z()); }
-  inline bool operator== (const Vec& v) const { return x() == v.x() && y() == v.y() && z() == v.z(); }
   inline bool isZero() const { return x() == 0 && y() == 0 && z() == 0; }
   friend ostream& operator<< (ostream& out, const Vec& v) { return out << "(" << v.x() << "," << v.y() << "," << v.z() << ")"; }
 };
@@ -59,15 +58,18 @@ struct Params {
   json toJson() const;
 };
 
-class Board {
-private:
+struct Board {
   vguard<int> cellStorage;
   vguard<Vec> neighborhood;
   uniform_real_distribution<> dist;
-protected:
   inline static int boardCoord (int val, int size) {
     const int m = val % size;
     return m < 0 ? (m + size) : m;
+  }
+  inline bool boardCoordsEqual (const Vec& a, const Vec& b) const {
+    return boardCoord (a.x(), xSize) == boardCoord (b.x(), xSize)
+      && boardCoord (a.y(), ySize) == boardCoord (b.y(), ySize)
+      && boardCoord (a.z(), zSize) == boardCoord (b.z(), zSize);
   }
   inline int cellIndex (int x, int y, int z, bool rev) const {
     return (rev ? 1 : 0) + 2 * (boardCoord(x,xSize) + xSize * (boardCoord(y,ySize) + ySize * boardCoord(z,zSize)));
@@ -75,7 +77,6 @@ protected:
   inline static int nbrRange (int size) {
     return size > 1 ? 1 : 0;
   }
-public:
   int xSize, ySize, zSize;
   Params params;
   vguard<Unit> unit;
@@ -115,7 +116,7 @@ public:
     return cell (u.pos, !u.rev);
   }
   inline bool indicesPaired (int i, int j) const {
-    return i >= 0 && j >= 0 && unit[i].pos == unit[j].pos;
+    return i >= 0 && j >= 0 && boardCoordsEqual (unit[i].pos, unit[j].pos);
   }
   inline bool canMerge (const Unit& u, const Unit& v, mt19937& mt) {
     return !(u.next == v.index || v.next == u.index)
@@ -130,9 +131,7 @@ public:
   inline void moveUnit (Unit& u, const Vec& pos, bool rev) {
     //    cerr << "before move..." << endl; dump(cerr);
     cell (u.pos, u.rev) = -1;
-    u.pos.x() = boardCoord (pos.x(), xSize);
-    u.pos.y() = boardCoord (pos.y(), ySize);
-    u.pos.z() = boardCoord (pos.z(), zSize);
+    u.pos = pos;
     u.rev = rev;
     cell (u.pos, u.rev) = u.index;
     //    cerr << u.pos << "." << u.rev << endl;
