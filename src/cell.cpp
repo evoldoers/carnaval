@@ -4,12 +4,22 @@
 Params Params::fromJson (json& j) {
   Params p;
   p.splitProb = j["split"];
+  p.stackEnergy = j["stack"];
+  p.auEnergy = j["au"];
+  p.gcEnergy = j["gc"];
+  p.guEnergy = j["gu"];
+  p.temp = j["temp"];
   return p;
 }
 
 json Params::toJson() const {
   json j;
   j["split"] = splitProb;
+  j["stack"] = stackEnergy;
+  j["au"] = auEnergy;
+  j["gc"] = gcEnergy;
+  j["gu"] = guEnergy;
+  j["temp"] = temp;
   return j;
 }
 

@@ -53,7 +53,8 @@ struct Unit {
 
 struct Params {
   double splitProb;  // probability that a move is a split, given that the Unit is paired
-  Params() : splitProb(.1) { }
+  double stackEnergy, auEnergy, gcEnergy, guEnergy, temp;  // simplified basepair stacking model
+  Params() : splitProb(.1), stackEnergy(1), auEnergy(1), gcEnergy(2), guEnergy(.5), temp(1) { }
   static Params fromJson (json&);
   json toJson() const;
 };
