@@ -6,7 +6,7 @@
 #include <random>
 #include <boost/program_options.hpp>
 
-#include "../src/json.hpp"
+#include "../src/cell.h"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -19,6 +19,8 @@ int main (int argc, char** argv) {
     po::options_description opts("Options");
     opts.add_options()
       ("help,h", "display this help message")
+      ("load,l", po::value<string>(), "load board state from file")
+      ("save,s", po::value<string>(), "save board state to file")
       ;
 
     po::variables_map vm;
@@ -32,6 +34,12 @@ int main (int argc, char** argv) {
       return 1;
     }
 
+    Board board;
+    if (vm.count("load")) {
+      std::ifstream infile (vm.at("load").as<string>());
+      
+    }
+    
   } catch (const std::exception& e) {
     cerr << e.what() << endl;
     return EXIT_FAILURE;
