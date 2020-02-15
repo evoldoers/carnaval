@@ -1,3 +1,4 @@
+#include <time.h>
 #include <cstdlib>
 #include <stdexcept>
 #include <iostream>
@@ -23,6 +24,9 @@ int main (int argc, char** argv) {
       ("ysize,y", po::value<int>()->default_value(64), "size of board in Y dimension")
       ("zsize,z", po::value<int>()->default_value(1), "size of board in Z dimension")
       ("init,i",  po::value<string>(), "specify initial sequence")
+      ("rnd,r",  po::value<int>(), "seed random number generator")
+      ("total-moves,t",  po::value<int>()->default_value(0), "total number of moves")
+      ("unit-moves,u",  po::value<int>()->default_value(0), "number of moves per unit")
       ("load,l", po::value<string>(), "load board state from file")
       ("save,s", po::value<string>(), "save board state to file")
       ;
@@ -37,6 +41,12 @@ int main (int argc, char** argv) {
       cout << opts << endl;
       return 1;
     }
+
+    time_t timer;
+    time (&timer);
+    const int seed = vm.count("rnd") ? vm.at("rnd").as<int>() : timer;
+    mt19937 mt (seed);
+    cerr << "Random seed is " << seed << endl;
 
     Board board;
     if (vm.count("load")) {
@@ -54,6 +64,15 @@ int main (int argc, char** argv) {
 
     if (vm.count("init"))
       board.addSeq (vm.at("init").as<string>());
+
+    const int moves = vm.at("total-moves").as<int>() + board.unit.size() * vm.at("unit-moves").as<int>();
+    int succeeded = 0;
+    for (int move = 0; move < moves; ++move)
+      if (board.tryMove (mt))
+	++succeeded;
+
+    if (moves)
+      cerr << "Tried " << moves << " moves, " << succeeded << " succeeded" << endl;
     
     if (vm.count("save")) {
       json j = board.toJson();

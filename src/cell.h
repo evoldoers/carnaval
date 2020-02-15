@@ -21,25 +21,33 @@ struct Vec {
   inline Vec operator+ (const Vec& d) const { return Vec (x()+d.x(), y()+d.y(), z()+d.z()); }
   inline Vec operator- (const Vec& d) const { return Vec (x()-d.x(), y()-d.y(), z()-d.z()); }
   inline bool isZero() const { return x() == 0 && y() == 0 && z() == 0; }
+  friend ostream& operator<< (ostream& out, const Vec& v) { return out << "(" << v.x() << "," << v.y() << "," << v.z() << ")"; }
 };
 
 struct Unit {
   char base;
   Vec pos;
-  bool isRev;
-  int next, prev;
+  bool rev;
+  int index, prev, next;
   Unit() { }
-  Unit (char b, int x, int y, int z, bool r, int p, int n)
-    : base(b), pos(x,y,z), isRev(r), prev(p), next(n)
+  Unit (char b, int x, int y, int z, bool r, int i, int p, int n)
+    : base(b), pos(x,y,z), rev(r), index(i), prev(p), next(n)
   { }
-  static bool isRNA (char c) {
+  inline static bool isRNA (char c) {
     return c == 'a' || c == 'c' || c == 'g' || c == 'u';
+  }
+  inline bool isComplement (const Unit& u) const {
+    return (base == 'a' && u.base == 'u')
+      || (base == 'c' && u.base == 'g')
+      || (base == 'g' && u.base == 'c')
+      || (base == 'u' && u.base == 'a');
   }
 };
 
 struct Params {
-  double splitProb;  // probability that a move is a split
-  Params() : splitProb(.1) { }
+  double splitProb;  // probability that a move is a split, given that the Unit is paired
+  double mismatchProb;  // probability that a move is a merge, given that the bases are non-complementary
+  Params() : splitProb(.1), mismatchProb(.01) { }
   static Params fromJson (json&);
   json toJson() const;
 };
@@ -48,13 +56,17 @@ class Board {
 private:
   vguard<int> cellStorage;
   vguard<Vec> neighborhood;
+  uniform_real_distribution<> dist;
 protected:
-  inline int mod (int val, int size) const {
+  inline static int boardCoord (int val, int size) {
     const int m = val % size;
     return m < 0 ? (m + size) : m;
   }
   inline int cellIndex (int x, int y, int z, bool rev) const {
-    return (rev ? 1 : 0) + 2 * (mod(x,xSize) + xSize * (mod(y,ySize) + ySize * mod(z,zSize)));
+    return (rev ? 1 : 0) + 2 * (boardCoord(x,xSize) + xSize * (boardCoord(y,ySize) + ySize * boardCoord(z,zSize)));
+  }
+  inline static int nbrRange (int size) {
+    return size > 1 ? 1 : 0;
   }
 public:
   int xSize, ySize, zSize;
@@ -73,7 +85,42 @@ public:
 
   void assertValid() const;
 
-  bool tryMove (int);
+  inline static int shortestDistance (int c1, int c2, int size) {
+    const int d = boardCoord (c1 - c2, size);
+    return min (d, size - d);
+  }
+  inline static bool coordAdjacent (int c1, int c2, int size) {
+    return shortestDistance (c1, c2, size) <= 1;
+  }
+  inline bool adjacent (const Vec& a, const Vec& b) const {
+    return coordAdjacent (a.x(), b.x(), xSize)
+      && coordAdjacent (a.y(), b.y(), ySize)
+      && coordAdjacent (a.z(), b.z(), zSize);
+  }
+  inline bool canMoveTo (const Unit& u, const Vec& newPos) const {
+    return (u.next < 0 || adjacent (unit[u.next].pos, newPos))
+      && (u.prev < 0 || adjacent (unit[u.prev].pos, newPos));
+  }
+  inline bool isPaired (const Unit& u) const {
+    return cell (u.pos, !u.rev) >= 0;
+  }
+  inline bool acceptMerge (const Unit& u, const Unit& v, mt19937& mt) {
+    return !(u.next == v.index || v.next == u.index) && (u.isComplement(v) || dist(mt) < params.mismatchProb);
+  }
+  inline void moveUnit (Unit& u, const Vec& pos, bool rev) {
+    //    cerr << "before move..." << endl; dump(cerr);
+    cell (u.pos, u.rev) = -1;
+    u.pos.x() = boardCoord (pos.x(), xSize);
+    u.pos.y() = boardCoord (pos.y(), ySize);
+    u.pos.z() = boardCoord (pos.z(), zSize);
+    u.rev = rev;
+    cell (u.pos, u.rev) = u.index;
+    //    cerr << u.pos << "." << u.rev << endl;
+    //    cerr << "after move..." << endl; dump(cerr);
+  }
+  
+  bool tryMove (mt19937&);
+  void dump (ostream&) const;
   
   inline const int& cell (int x, int y, int z, bool rev) const {
     return cellStorage[cellIndex (x, y, z, rev)];
