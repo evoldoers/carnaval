@@ -1,3 +1,4 @@
+#include <set>
 #include "cell.h"
 
 Params fromJson (json& j) {
@@ -45,6 +46,7 @@ Board Board::fromJson (json& j) {
 }
 
 json Board::toJson() const {
+  assertValid();
   json j;
   j["size"] = { xSize, ySize, zSize };
   if (unit.size()) {
@@ -90,14 +92,31 @@ const Vec& Board::rndNbrVec (mt19937& mt) const {
   return neighborhood [mt() % neighborhood.size()];
 }
 
-bool Board::cellIsValid (int, int, int) const {
-  return false;
+void Board::assertValid() const {
+  set<int> seen;
+  for (int x = 0; x < xSize; ++x)
+    for (int y = 0; y < ySize; ++y)
+      for (int z = 0; z < zSize; ++z)
+	for (bool rev = false; !rev; rev = true) {
+	  const int idx = cell (x, y, z, rev);
+	  if (idx >= 0) {
+	    if (seen.count(idx))
+	      throw runtime_error ("Duplicate Unit index");
+	    const Unit u = unit[idx];
+	    if (x != u.pos.x() || y != u.pos.y() || z != u.pos.z())
+	      throw runtime_error ("Mislocated Unit");
+	    if (u.prev >= 0 && unit[u.prev].next != idx)
+	      throw runtime_error ("Broken Unit.prev");
+	    if (u.next >= 0 && unit[u.next].prev != idx)
+	      throw runtime_error ("Broken Unit.next");
+	    seen.insert (idx);
+	  }
+	}
+  if (seen.size() != unit.size())
+    throw runtime_error ("Missing Unit");
 }
 
-bool Board::tryMove (const Vec&, const Vec&) {
-  return false;
-}
-
-bool Board::trySplit (const Vec&, const Vec&) {
+bool Board::tryMove (int index) {
+  
   return false;
 }

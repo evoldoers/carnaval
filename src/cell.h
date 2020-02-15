@@ -71,10 +71,9 @@ public:
   
   const Vec& rndNbrVec (mt19937&) const;
 
-  bool cellIsValid (int, int, int) const;
+  void assertValid() const;
 
-  bool tryMove (const Vec&, const Vec&);
-  bool trySplit (const Vec&, const Vec&);
+  bool tryMove (int);
   
   inline const int& cell (int x, int y, int z, bool rev) const {
     return cellStorage[cellIndex (x, y, z, rev)];
