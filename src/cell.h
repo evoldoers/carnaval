@@ -20,6 +20,7 @@ struct Vec {
   inline int& z() { return xyz[2]; }
   inline Vec operator+ (const Vec& d) const { return Vec (x()+d.x(), y()+d.y(), z()+d.z()); }
   inline Vec operator- (const Vec& d) const { return Vec (x()-d.x(), y()-d.y(), z()-d.z()); }
+  inline bool operator== (const Vec& v) const { return x() == v.x() && y() == v.y() && z() == v.z(); }
   inline bool isZero() const { return x() == 0 && y() == 0 && z() == 0; }
   friend ostream& operator<< (ostream& out, const Vec& v) { return out << "(" << v.x() << "," << v.y() << "," << v.z() << ")"; }
 };
@@ -45,15 +46,15 @@ struct Unit {
   inline static char base2char (int b) {
     return alphabet[b];
   }
-  inline bool isComplement (const Unit& u) const {
-    return base == 4 - u.base;
+  inline bool isComplementOrWobble (const Unit& u) const {
+    const int x = base, y = u.base;
+    return (x == 3 - y) || (x * y == 6);
   }
 };
 
 struct Params {
   double splitProb;  // probability that a move is a split, given that the Unit is paired
-  double mismatchProb;  // probability that a move is a merge, given that the bases are non-complementary
-  Params() : splitProb(.1), mismatchProb(.01) { }
+  Params() : splitProb(.1) { }
   static Params fromJson (json&);
   json toJson() const;
 };
@@ -108,10 +109,23 @@ public:
       && (u.prev < 0 || adjacent (unit[u.prev].pos, newPos));
   }
   inline bool isPaired (const Unit& u) const {
-    return cell (u.pos, !u.rev) >= 0;
+    return pairedIndex(u) >= 0;
   }
-  inline bool acceptMerge (const Unit& u, const Unit& v, mt19937& mt) {
-    return !(u.next == v.index || v.next == u.index) && (u.isComplement(v) || dist(mt) < params.mismatchProb);
+  inline int pairedIndex (const Unit& u) const {
+    return cell (u.pos, !u.rev);
+  }
+  inline bool indicesPaired (int i, int j) const {
+    return i >= 0 && j >= 0 && unit[i].pos == unit[j].pos;
+  }
+  inline bool canMerge (const Unit& u, const Unit& v, mt19937& mt) {
+    return !(u.next == v.index || v.next == u.index)
+      && u.isComplementOrWobble(v)
+      && !indicesPaired (u.prev, v.prev)  // disallow parallel stacking
+      && !indicesPaired (u.next, v.next)  // disallow parallel stacking
+      && u.next != v.index  // disallow neighbors
+      && v.next != u.index
+      && u.next != v.prev  // disallow next-but-one neighbors
+      && u.prev != v.next;
   }
   inline void moveUnit (Unit& u, const Vec& pos, bool rev) {
     //    cerr << "before move..." << endl; dump(cerr);
@@ -140,6 +154,8 @@ public:
   inline int& cell (const Vec& v, bool rev) {
     return cell (v.x(), v.y(), v.z(), rev);
   }
+
+  string foldString() const;
 };
 
 #endif /* CELL_INCLUDED */

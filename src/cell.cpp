@@ -4,14 +4,12 @@
 Params Params::fromJson (json& j) {
   Params p;
   p.splitProb = j["split"];
-  p.mismatchProb = j["mismatch"];
   return p;
 }
 
 json Params::toJson() const {
   json j;
   j["split"] = splitProb;
-  j["mismatch"] = mismatchProb;
   return j;
 }
 
@@ -68,6 +66,7 @@ json Board::toJson() const {
     }
     j["unit"] = units;
   }
+  j["fold"] = foldString();
   return j;
 }
 
@@ -140,7 +139,7 @@ bool Board::tryMove (mt19937& mt) {
       const int nbrIndex = cell (newPos, false);
       const int nbrPairIndex = cell (newPos, true);
       if (isPaired (u)) {
-	Unit& p = unit[cell(u.pos,!u.rev)];
+	Unit& p = unit[pairedIndex(u)];
 	//	cerr << "Paired unit is at " << p.pos << endl;
 	if (dist(mt) < params.splitProb) {
 	  // attempt split
@@ -153,7 +152,7 @@ bool Board::tryMove (mt19937& mt) {
 	    moved = true;
 	  } else {
 	    Unit& nbr = unit[nbrIndex];
-	    if (nbrPairIndex < 0 && acceptMerge (u, nbr, mt)) {
+	    if (nbrPairIndex < 0 && canMerge (u, nbr, mt)) {
 	      // split and move to rev slot
 	      moveUnit (u, newPos, true);
 	      moveUnit (p, p.pos, false);
@@ -177,7 +176,7 @@ bool Board::tryMove (mt19937& mt) {
 	  moved = true;
 	} else {
 	  Unit& nbr = unit[nbrIndex];
-	  if (nbrPairIndex < 0 && acceptMerge (u, nbr, mt)) {
+	  if (nbrPairIndex < 0 && canMerge (u, nbr, mt)) {
 	    // move to rev slot
 	    moveUnit (u, newPos, true);
 	    moved = true;
@@ -203,4 +202,46 @@ void Board::dump (ostream& out) const {
 	  }
 	  out << endl;
 	}
+}
+
+string Board::foldString() const {
+  for (size_t i = 0; i < unit.size(); ++i) {
+    const Unit& u = unit[i];
+    if (u.index != i || (i > 0 && u.prev != i-1) || (i < unit.size()-1 && u.next != i+1))
+      throw runtime_error ("foldString requires single linear chain");
+  }
+  string fs (unit.size(), '.');
+  const string leftChar  = "<[{(0123456789abcdefghijklmnopqrstuvwxyz";
+  const string rightChar = ">]})0123456789abcdefghijklmnopqrstuvwxyz";
+  typedef pair<int,int> IndexPair;
+  map<size_t,set<IndexPair>> offsetPairs;
+  for (int i = 0; i < unit.size(); ++i) {
+    const Unit& u = unit[i];
+    const int j = pairedIndex(u);
+    if (j > i) {
+      const IndexPair ij (i, j);
+      //      cerr << ij.first << " <--> " << ij.second << endl;
+      size_t offset;
+      for (offset = 0; offset < leftChar.size(); ++offset) {
+	bool intersects = false;
+	for (const auto& op: offsetPairs[offset]) {
+	  const int a = op.first, b = op.second;
+	  if ((i < a && a < j && j < b)
+	      || (a < i && i < b && b < j)) {
+	    intersects = true;
+	    break;
+	  }
+	}
+	if (!intersects)
+	  break;
+      }
+      if (offset < leftChar.size()) {
+	offsetPairs[offset].insert (ij);
+	fs[ij.first] = leftChar[offset];
+	fs[ij.second] = rightChar[offset];
+      } else
+	cerr << "Not enough fold characters!" << endl;
+    }
+  }
+  return fs;
 }
