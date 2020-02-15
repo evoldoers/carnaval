@@ -25,22 +25,28 @@ struct Vec {
 };
 
 struct Unit {
-  char base;
+  int base;
   Vec pos;
   bool rev;
   int index, prev, next;
+  static string alphabet;  // acgu
   Unit() { }
   Unit (char b, int x, int y, int z, bool r, int i, int p, int n)
     : base(b), pos(x,y,z), rev(r), index(i), prev(p), next(n)
   { }
   inline static bool isRNA (char c) {
-    return c == 'a' || c == 'c' || c == 'g' || c == 'u';
+    return alphabet.find (c) < alphabet.size();
+  }
+  inline static int char2base (char c) {
+    if (!isRNA (c))
+      throw runtime_error ("Not a base");
+    return alphabet.find(c);
+  }
+  inline static char base2char (int b) {
+    return alphabet[b];
   }
   inline bool isComplement (const Unit& u) const {
-    return (base == 'a' && u.base == 'u')
-      || (base == 'c' && u.base == 'g')
-      || (base == 'g' && u.base == 'c')
-      || (base == 'u' && u.base == 'a');
+    return base == 4 - u.base;
   }
 };
 

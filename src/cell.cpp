@@ -15,6 +15,8 @@ json Params::toJson() const {
   return j;
 }
 
+string Unit::alphabet ("acgu");
+
 Board::Board() : dist(0,1)
 { }
 
@@ -35,7 +37,7 @@ Board Board::fromJson (json& j) {
   for (auto& ju : j["unit"]) {
     const int index = board.unit.size();
     auto& jp = ju["pos"];
-    Unit unit (ju["base"].get<string>()[0],
+    Unit unit (Unit::char2base (ju["base"].get<string>()[0]),
 	       jp[0].get<int>(),
 	       jp[1].get<int>(),
 	       jp[2].get<int>(),
@@ -57,7 +59,7 @@ json Board::toJson() const {
   if (unit.size()) {
     json units;
     for (auto& u: unit) {
-      json ju = {{ "base", string (1, u.base) },
+      json ju = {{ "base", string (1, Unit::base2char (u.base)) },
 		 { "pos", { u.pos.x(), u.pos.y(), u.pos.z() } }};
       if (u.rev) ju["rev"] = true;
       if (u.prev >= 0) ju["prev"] = u.prev;
@@ -79,7 +81,7 @@ void Board::addSeq (const string& seq) {
     if (!Unit::isRNA (c))
       throw runtime_error ("Sequence is not RNA");
     const int index = unit.size();
-    Unit u (c,
+    Unit u (Unit::char2base (c),
 	    pos,
 	    0,
 	    0,
