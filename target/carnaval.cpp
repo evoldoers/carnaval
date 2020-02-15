@@ -22,6 +22,7 @@ int main (int argc, char** argv) {
       ("xsize,x", po::value<int>()->default_value(64), "size of board in X dimension")
       ("ysize,y", po::value<int>()->default_value(64), "size of board in Y dimension")
       ("zsize,z", po::value<int>()->default_value(1), "size of board in Z dimension")
+      ("init,i",  po::value<string>(), "specify initial sequence")
       ("load,l", po::value<string>(), "load board state from file")
       ("save,s", po::value<string>(), "save board state to file")
       ;
@@ -51,13 +52,17 @@ int main (int argc, char** argv) {
 		     vm["zsize"].as<int>());
     }
 
+    if (vm.count("init"))
+      board.addSeq (vm.at("init").as<string>());
+    
     if (vm.count("save")) {
       json j = board.toJson();
       ofstream outfile (vm.at("save").as<string>());
       if (!outfile)
 	throw runtime_error ("Can't save board file");
       outfile << j << endl;
-    }
+    } else
+      cout << board.toJson() << endl;
 
   } catch (const exception& e) {
     cerr << e.what() << endl;

@@ -47,16 +47,43 @@ Board Board::fromJson (json& j) {
 json Board::toJson() const {
   json j;
   j["size"] = { xSize, ySize, zSize };
-  json units;
-  for (auto& u: unit) {
-    json ju = {{ "base", string (1, u.base),
-		 "pos", { u.pos.x(), u.pos.y(), u.pos.z() } }};
-    if (u.isRev) ju["rev"] = true;
-    if (u.prev >= 0) ju["prev"] = u.prev;
-    if (u.next >= 0) ju["next"] = u.next;
-    units.push_back (ju);
+  if (unit.size()) {
+    json units;
+    for (auto& u: unit) {
+      json ju = {{ "base", string (1, u.base) },
+		 { "pos", { u.pos.x(), u.pos.y(), u.pos.z() } }};
+      if (u.isRev) ju["rev"] = true;
+      if (u.prev >= 0) ju["prev"] = u.prev;
+      if (u.next >= 0) ju["next"] = u.next;
+      units.push_back (ju);
+    }
+    j["unit"] = units;
   }
   return j;
+}
+
+void Board::addSeq (const string& seq) {
+  if (xSize < seq.length())
+    throw runtime_error ("Board is too small for sequence");
+  for (size_t pos = 0; pos < seq.length(); ++pos) {
+    if (cell (pos, 0, 0, false) != -1)
+      throw runtime_error ("Cell occupied");
+    const char c = tolower (seq.at(pos));
+    if (!Unit::isRNA (c))
+      throw runtime_error ("Sequence is not RNA");
+    const int index = unit.size();
+    Unit u (c,
+	    pos,
+	    0,
+	    0,
+	    false,
+	    pos ? (index - 1) : -1,
+	    -1);
+    if (pos)
+      unit.back().next = index;
+    unit.push_back (u);
+    cell (u.pos, false) = index;
+  }
 }
 
 const Vec& Board::rndNbrVec (mt19937& mt) const {

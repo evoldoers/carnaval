@@ -29,9 +29,12 @@ struct Unit {
   bool isRev;
   int next, prev;
   Unit() { }
-  Unit (char b, int x, int y, int z, bool r, int n, int p)
-    : base(b), pos(x,y,z), isRev(r), next(n), prev(p)
+  Unit (char b, int x, int y, int z, bool r, int p, int n)
+    : base(b), pos(x,y,z), isRev(r), prev(p), next(n)
   { }
+  static bool isRNA (char c) {
+    return c == 'a' || c == 'c' || c == 'g' || c == 'u';
+  }
 };
 
 struct Params {
@@ -64,6 +67,8 @@ public:
   static Board fromJson (json&);
   json toJson() const;
 
+  void addSeq (const string&);  // adds sequence along x-axis starting at origin
+  
   const Vec& rndNbrVec (mt19937&) const;
 
   bool cellIsValid (int, int, int) const;
