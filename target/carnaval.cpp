@@ -19,6 +19,9 @@ int main (int argc, char** argv) {
     po::options_description opts("Options");
     opts.add_options()
       ("help,h", "display this help message")
+      ("xsize,x", po::value<int>()->default_value(64), "size of board in X dimension")
+      ("ysize,y", po::value<int>()->default_value(64), "size of board in Y dimension")
+      ("zsize,z", po::value<int>()->default_value(1), "size of board in Z dimension")
       ("load,l", po::value<string>(), "load board state from file")
       ("save,s", po::value<string>(), "save board state to file")
       ;
@@ -36,11 +39,27 @@ int main (int argc, char** argv) {
 
     Board board;
     if (vm.count("load")) {
-      std::ifstream infile (vm.at("load").as<string>());
-      
+      ifstream infile (vm.at("load").as<string>());
+      if (!infile)
+	throw runtime_error ("Can't load board file");
+      json j;
+      infile >> j;
+      board = Board::fromJson (j);
+    } else {
+      board = Board (vm["xsize"].as<int>(),
+		     vm["ysize"].as<int>(),
+		     vm["zsize"].as<int>());
     }
-    
-  } catch (const std::exception& e) {
+
+    if (vm.count("save")) {
+      json j = board.toJson();
+      ofstream outfile (vm.at("save").as<string>());
+      if (!outfile)
+	throw runtime_error ("Can't save board file");
+      outfile << j << endl;
+    }
+
+  } catch (const exception& e) {
     cerr << e.what() << endl;
     return EXIT_FAILURE;
   }
