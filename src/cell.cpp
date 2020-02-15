@@ -67,7 +67,7 @@ json Board::toJson() const {
   if (unit.size()) {
     json units;
     for (auto& u: unit) {
-      json ju = {{ "base", string (1, Unit::base2char (u.base)) },
+      json ju = {{ "base", string (1, u.baseChar()) },
 		 { "pos", { u.pos.x(), u.pos.y(), u.pos.z() } }};
       if (u.rev) ju["rev"] = true;
       if (u.prev >= 0) ju["prev"] = u.prev;
@@ -78,6 +78,7 @@ json Board::toJson() const {
   }
   j["fold"] = foldString();
   j["energy"] = foldEnergy();
+  j["sequence"] = sequence();
   return j;
 }
 
@@ -233,12 +234,23 @@ vguard<Board::IndexPair> Board::indexPairs() const {
   return p;
 }
 
-string Board::foldString() const {
+void Board::assertLinear() const {
   for (size_t i = 0; i < unit.size(); ++i) {
     const Unit& u = unit[i];
     if (u.index != i || (i > 0 && u.prev != i-1) || (i < unit.size()-1 && u.next != i+1))
       throw runtime_error ("foldString requires single linear chain");
   }
+}
+
+string Board::sequence() const {
+  string s;
+  s.reserve (unit.size());
+  for (auto& u: unit)
+    s.push_back (u.baseChar());
+  return s;
+}
+
+string Board::foldString() const {
   string fs (unit.size(), '.');
   const string leftChar  = "<[{(0123456789abcdefghijklmnopqrstuvwxyz";
   const string rightChar = ">]})0123456789abcdefghijklmnopqrstuvwxyz";

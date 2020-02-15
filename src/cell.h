@@ -34,6 +34,7 @@ struct Unit {
   Unit (char b, int x, int y, int z, bool r, int i, int p, int n)
     : base(b), pos(x,y,z), rev(r), index(i), prev(p), next(n)
   { }
+  inline char baseChar() const { return base2char (base); }
   inline static bool isRNA (char c) {
     return alphabet.find (c) < alphabet.size();
   }
@@ -180,8 +181,10 @@ struct Board {
   }
 
   vguard<IndexPair> indexPairs() const;
+  string sequence() const;
   string foldString() const;
   double foldEnergy() const;
+  void assertLinear() const;
 };
 
 #endif /* CELL_INCLUDED */

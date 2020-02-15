@@ -106,6 +106,7 @@ int main (int argc, char** argv) {
     if (vm.count("post")) {
       json js;
       js["samples"] = samples;
+      js["sequence"] = board.sequence();
       for (const auto& ij_n: pairCount) {
 	const string i = to_string(ij_n.first.first), j = to_string(ij_n.first.second);
 	//	js["count"][i][j] = ij_n.second;
