@@ -60,6 +60,7 @@ struct Params {
 };
 
 struct Board {
+  typedef pair<int,int> IndexPair;
   vguard<int> cellStorage;
   vguard<Vec> neighborhood;
   uniform_real_distribution<> dist;
@@ -129,7 +130,7 @@ struct Board {
       && !indicesPaired (u.prev, v.prev)  // disallow parallel stacking
       && !indicesPaired (u.next, v.next);
   }
-  inline double pairingEnergy (const Unit& u, const Unit& v) const {
+  inline double calcEnergy (const Unit& u, const Unit& v, double stackWeight) const {
     double e = 0;
     const int bprod = u.base * v.base;
     switch (bprod) {
@@ -138,15 +139,14 @@ struct Board {
     case 6: e += params.guEnergy; break;
     default: throw runtime_error("Not a basepair"); break;
     }
-    if (indicesPaired (u.prev, v.next)) {
-      e += params.stackEnergy;
-      //      cerr << "stack!" << endl;
-    }
-    if (indicesPaired (u.next, v.prev)) {
-      e += params.stackEnergy;
-      //      cerr << "stack!" << endl;
-    }
+    if (indicesPaired (u.prev, v.next))
+      e += params.stackEnergy * stackWeight;
+    if (indicesPaired (u.next, v.prev))
+      e += params.stackEnergy * stackWeight;
     return e;
+  }
+  inline double pairingEnergy (const Unit& u, const Unit& v) const {
+    return calcEnergy (u, v, 1);
   }
   inline bool acceptMove (double energyDelta, double fwdBackRatio, mt19937& mt) {
     const double p = exp (energyDelta / params.temp) / fwdBackRatio;
@@ -179,7 +179,9 @@ struct Board {
     return cell (v.x(), v.y(), v.z(), rev);
   }
 
+  vguard<IndexPair> indexPairs() const;
   string foldString() const;
+  double foldEnergy() const;
 };
 
 #endif /* CELL_INCLUDED */

@@ -8,6 +8,7 @@
 #include <boost/program_options.hpp>
 
 #include "../src/cell.h"
+#include "../src/bitmap_image.hpp"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -27,10 +28,13 @@ int main (int argc, char** argv) {
       ("rnd,r",  po::value<int>(), "seed random number generator")
       ("total-moves,t",  po::value<long>()->default_value(0), "total number of moves")
       ("unit-moves,u",  po::value<long>()->default_value(0), "number of moves per unit")
-      ("folds,f", "report fold strings every 1000 moves")
+      ("folds,f",  "log fold strings every <period> moves")
+      ("period,p", po::value<int>()->default_value(1000), "logging period")
       ("temp,T",  po::value<double>(), "specify temperature")
       ("load,l", po::value<string>(), "load board state from file")
       ("save,s", po::value<string>(), "save board state to file")
+      ("post,P", po::value<string>(), "save base-pairing posterior probabilities to JSON file")
+      ("bitmap,b", po::value<string>(), "save base-pairing probabilities to bitmap image file")
       ;
 
     po::variables_map vm;
@@ -71,18 +75,48 @@ int main (int argc, char** argv) {
       board.params.temp = vm.at("temp").as<double>();
 
     const long moves = vm.at("total-moves").as<long>() + board.unit.size() * vm.at("unit-moves").as<long>();
-    const bool reportFolds = vm.count("folds");
-    int succeeded = 0;
+    const bool logFolds = vm.count("folds");
+    const long logPeriod = vm.count("period");
+    long succeeded = 0, samples = 0;
+    map<Board::IndexPair,long> pairCount;
     for (long move = 0; move < moves; ++move) {
       if (board.tryMove (mt))
 	++succeeded;
-      if (reportFolds && move % 1000 == 0)
-	cerr << "Move " << move << ": " << board.foldString() << endl;
+      if (move % logPeriod == 0) {
+	if (logFolds)
+	  cerr << "Move " << move << ": " << board.foldString() << " " << board.foldEnergy() << endl;
+	for (const auto& ij: board.indexPairs())
+	  ++pairCount[ij];
+	++samples;
+      }
     }
 
     if (moves)
       cerr << "Tried " << moves << " moves, " << succeeded << " succeeded" << endl;
-    
+
+    if (vm.count("bitmap")) {
+      bitmap_image image (board.unit.size(), board.unit.size());
+      for (const auto& ij_n: pairCount) {
+	const int level = 255 * ij_n.second / samples;
+	image.set_pixel (ij_n.first.first, ij_n.first.second, level, level, level);
+      }
+      image.save_image (vm.at("bitmap").as<string>().c_str());
+    }
+
+    if (vm.count("post")) {
+      json js;
+      js["samples"] = samples;
+      for (const auto& ij_n: pairCount) {
+	const string i = to_string(ij_n.first.first), j = to_string(ij_n.first.second);
+	//	js["count"][i][j] = ij_n.second;
+	js["prob"][i][j] = ((double) ij_n.second) / samples;
+      }
+      ofstream outfile (vm.at("post").as<string>());
+      if (!outfile)
+	throw runtime_error ("Can't save basepair probabilities file");
+      outfile << js << endl;
+    }
+
     if (vm.count("save")) {
       json j = board.toJson();
       ofstream outfile (vm.at("save").as<string>());

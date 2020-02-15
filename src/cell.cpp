@@ -77,6 +77,7 @@ json Board::toJson() const {
     j["unit"] = units;
   }
   j["fold"] = foldString();
+  j["energy"] = foldEnergy();
   return j;
 }
 
@@ -221,6 +222,17 @@ void Board::dump (ostream& out) const {
 	}
 }
 
+vguard<Board::IndexPair> Board::indexPairs() const {
+  vguard<IndexPair> p;
+  for (int i = 0; i < unit.size(); ++i) {
+    const Unit& u = unit[i];
+    const int j = pairedIndex(u);
+    if (j > i)
+      p.push_back (IndexPair (i, j));
+  }
+  return p;
+}
+
 string Board::foldString() const {
   for (size_t i = 0; i < unit.size(); ++i) {
     const Unit& u = unit[i];
@@ -230,35 +242,37 @@ string Board::foldString() const {
   string fs (unit.size(), '.');
   const string leftChar  = "<[{(0123456789abcdefghijklmnopqrstuvwxyz";
   const string rightChar = ">]})0123456789abcdefghijklmnopqrstuvwxyz";
-  typedef pair<int,int> IndexPair;
   map<size_t,set<IndexPair>> offsetPairs;
-  for (int i = 0; i < unit.size(); ++i) {
-    const Unit& u = unit[i];
-    const int j = pairedIndex(u);
-    if (j > i) {
-      const IndexPair ij (i, j);
-      //      cerr << ij.first << " <--> " << ij.second << endl;
-      size_t offset;
-      for (offset = 0; offset < leftChar.size(); ++offset) {
-	bool intersects = false;
-	for (const auto& op: offsetPairs[offset]) {
-	  const int a = op.first, b = op.second;
-	  if ((i < a && a < j && j < b)
-	      || (a < i && i < b && b < j)) {
-	    intersects = true;
-	    break;
-	  }
-	}
-	if (!intersects)
+  for (const auto& ij: indexPairs()) {
+    const int i = ij.first, j = ij.second;
+    //      cerr << ij.first << " <--> " << ij.second << endl;
+    size_t offset;
+    for (offset = 0; offset < leftChar.size(); ++offset) {
+      bool intersects = false;
+      for (const auto& op: offsetPairs[offset]) {
+	const int a = op.first, b = op.second;
+	if ((i < a && a < j && j < b)
+	    || (a < i && i < b && b < j)) {
+	  intersects = true;
 	  break;
+	}
       }
-      if (offset < leftChar.size()) {
-	offsetPairs[offset].insert (ij);
-	fs[ij.first] = leftChar[offset];
-	fs[ij.second] = rightChar[offset];
-      } else
-	cerr << "Not enough fold characters!" << endl;
+      if (!intersects)
+	break;
     }
+    if (offset < leftChar.size()) {
+      offsetPairs[offset].insert (ij);
+      fs[ij.first] = leftChar[offset];
+      fs[ij.second] = rightChar[offset];
+    } else
+      cerr << "Not enough fold characters!" << endl;
   }
   return fs;
+}
+
+double Board::foldEnergy() const {
+  double e = 0;
+  for (const auto& ij: indexPairs())
+    e += calcEnergy (unit[ij.first], unit[ij.second], 0.5);
+  return e;
 }
