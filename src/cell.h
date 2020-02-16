@@ -123,14 +123,22 @@ struct Board {
     return i >= 0 && j >= 0 && boardCoordsEqual (unit[i].pos, unit[j].pos);
   }
   inline bool canMerge (const Unit& u, const Unit& v) const {
-    return !(u.next == v.index || v.next == u.index)
-      && u.isComplementOrWobble(v)
-      && u.next != v.index  // disallow neighbors
-      && v.next != u.index
-      && u.next != v.prev  // disallow next-but-one neighbors
-      && u.prev != v.next
-      && !indicesPaired (u.prev, v.prev)  // disallow parallel stacking
-      && !indicesPaired (u.next, v.next);
+    if (!u.isComplementOrWobble(v))
+      return false;
+    if (u.next == v.index || v.next == u.index)  // disallow neighbors
+      return false;
+    const int u_next2 = u.next >= 0 ? unit[u.next].next : -1;
+    const int u_prev2 = u.prev >= 0 ? unit[u.prev].prev : -1;
+    if (u_next2 >= 0
+	&& (u_next2 == v.index  // disallow next-but-one neighbors
+	    || u_next2 == v.prev))  // disallow next-but-two neighbors
+      return false;
+    if (u_prev2 >= 0
+	&& (u_prev2 == v.index
+	    || u_prev2 == v.next))
+      return false;
+  return (!indicesPaired (u.prev, v.prev)  // disallow parallel stacking
+	  && !indicesPaired (u.next, v.next));
   }
   inline double calcEnergy (const Unit& u, const Unit& v, double stackWeight) const {
     double e = 0;
