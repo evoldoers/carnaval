@@ -288,3 +288,11 @@ double Board::foldEnergy() const {
     e += calcEnergy (unit[ij.first], unit[ij.second], 0.5);
   return e;
 }
+
+vguard<Vec> Board::unitPos() const {
+  vguard<Vec> up;
+  up.reserve (unit.size());
+  for (auto& u: unit)
+    up.push_back (u.pos);
+  return up;
+}

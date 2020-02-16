@@ -183,6 +183,7 @@ struct Board {
   vguard<IndexPair> indexPairs() const;
   string sequence() const;
   string foldString() const;
+  vguard<Vec> unitPos() const;
   double foldEnergy() const;
   void assertLinear() const;
 };
