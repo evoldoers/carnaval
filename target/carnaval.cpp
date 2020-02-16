@@ -29,7 +29,7 @@ int main (int argc, char** argv) {
       ("rnd,r",  po::value<int>(), "seed random number generator")
       ("total-moves,t",  po::value<long>()->default_value(0), "total number of moves")
       ("unit-moves,u",  po::value<long>()->default_value(0), "number of moves per unit")
-      ("folds,f",  "periodically log fold string, energy, radius of gyration, and centroid")
+      ("folds,f",  "periodically log move count, fold string, energy, radius of gyration, and centroid")
       ("monochrome,m",  "no ANSI color codes in logging, please")
       ("period,p", po::value<long>()->default_value(1000), "logging period")
       ("temp,T",  po::value<double>(), "specify temperature")
@@ -87,7 +87,7 @@ int main (int argc, char** argv) {
 	++succeeded;
       if (move % logPeriod == 0) {
 	if (logFolds)
-	  cout << "Move " << move
+	  cout << succeeded
 	       << " (" << fixed << setprecision(1) << (100. * move / moves) << "%) "
 	       << (logColors ? board.coloredFoldString() : board.foldString())
 	       << " " << setw(5) << board.foldEnergy()
