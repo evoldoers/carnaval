@@ -35,8 +35,9 @@ int main (int argc, char** argv) {
       ("temp,T",  po::value<double>(), "specify temperature")
       ("load,l", po::value<string>(), "load board state from file")
       ("save,s", po::value<string>(), "save board state to file")
-      ("post,P", po::value<string>(), "save base-pairing posterior probabilities to JSON file")
+      ("json,j", po::value<string>(), "save base-pairing posterior probabilities to JSON file")
       ("bitmap,b", po::value<string>(), "save base-pairing probabilities to bitmap image file")
+      ("csv,c", po::value<string>(), "save base-pairing probabilities to CSV file")
       ;
 
     po::variables_map vm;
@@ -106,24 +107,35 @@ int main (int argc, char** argv) {
     if (vm.count("bitmap")) {
       bitmap_image image (board.unit.size(), board.unit.size());
       for (const auto& ij_n: pairCount) {
-	const int level = 255 * ij_n.second / samples;
+	const int level = (255 * ij_n.second + 128) / samples;
 	image.set_pixel (ij_n.first.first, ij_n.first.second, level, level, level);
       }
       image.save_image (vm.at("bitmap").as<string>().c_str());
     }
 
-    if (vm.count("post")) {
+    if (vm.count("csv")) {
+      vguard<vguard<string> > pp (board.unit.size(), vguard<string> (board.unit.size()));
+      for (const auto& ij_n: pairCount)
+	pp[ij_n.first.first][ij_n.first.second] = to_string (ij_n.second / (double) samples);
+      ofstream outfile (vm.at("csv").as<string>());
+      if (!outfile)
+	throw runtime_error ("Can't save basepair probabilities to CSV file");
+      outfile << "*," << join (board.sequence(), ",") << endl;
+      for (size_t n = 0; n < pp.size(); ++n)
+	outfile << board.unit[n].baseChar() << "," << to_string_join (pp[n], ",") << endl;
+    }
+
+    if (vm.count("json")) {
       json js;
       js["samples"] = samples;
       js["sequence"] = board.sequence();
       for (const auto& ij_n: pairCount) {
 	const string i = to_string(ij_n.first.first), j = to_string(ij_n.first.second);
-	//	js["count"][i][j] = ij_n.second;
 	js["prob"][i][j] = ((double) ij_n.second) / samples;
       }
-      ofstream outfile (vm.at("post").as<string>());
+      ofstream outfile (vm.at("json").as<string>());
       if (!outfile)
-	throw runtime_error ("Can't save basepair probabilities file");
+	throw runtime_error ("Can't save basepair probabilities to JSON file");
       outfile << js << endl;
     }
 
