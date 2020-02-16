@@ -55,7 +55,7 @@ struct Unit {
 struct Params {
   double splitProb;  // probability that a move is a split, given that the Unit is paired
   double stackEnergy, auEnergy, gcEnergy, guEnergy, temp;  // simplified basepair stacking model
-  Params() : splitProb(.5), stackEnergy(1), auEnergy(-.5), gcEnergy(.5), guEnergy(-1), temp(.5) { }
+  Params() : splitProb(.5), stackEnergy(4), auEnergy(-2), gcEnergy(2), guEnergy(-3), temp(1) { }
   static Params fromJson (json&);
   json toJson() const;
 };
@@ -65,6 +65,7 @@ struct Board {
   vguard<int> cellStorage;
   vguard<Vec> neighborhood;
   uniform_real_distribution<> dist;
+  static string leftFoldChar, rightFoldChar;
   inline static int boardCoord (int val, int size) {
     const int m = val % size;
     return m < 0 ? (m + size) : m;
@@ -187,9 +188,12 @@ struct Board {
   string sequence() const;
   vguard<Vec> unitPos() const;
   vguard<double> unitCentroid() const;
+  double unitRadiusOfGyration() const;
 
   string foldString() const;
   double foldEnergy() const;
+
+  string coloredFoldString() const;
 };
 
 #endif /* CELL_INCLUDED */

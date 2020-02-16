@@ -29,8 +29,9 @@ int main (int argc, char** argv) {
       ("rnd,r",  po::value<int>(), "seed random number generator")
       ("total-moves,t",  po::value<long>()->default_value(0), "total number of moves")
       ("unit-moves,u",  po::value<long>()->default_value(0), "number of moves per unit")
-      ("folds,f",  "log fold strings every <period> moves")
-      ("period,p", po::value<int>()->default_value(1000), "logging period")
+      ("folds,f",  "periodically log fold string, energy, radius of gyration, and centroid")
+      ("monochrome,m",  "no ANSI color codes in logging, please")
+      ("period,p", po::value<long>()->default_value(1000), "logging period")
       ("temp,T",  po::value<double>(), "specify temperature")
       ("load,l", po::value<string>(), "load board state from file")
       ("save,s", po::value<string>(), "save board state to file")
@@ -77,7 +78,8 @@ int main (int argc, char** argv) {
 
     const long moves = vm.at("total-moves").as<long>() + board.unit.size() * vm.at("unit-moves").as<long>();
     const bool logFolds = vm.count("folds");
-    const long logPeriod = vm.count("period");
+    const long logPeriod = vm.at("period").as<long>();
+    const bool logColors = !vm.count("monochrome");
     long succeeded = 0, samples = 0;
     map<Board::IndexPair,long> pairCount;
     for (long move = 0; move < moves; ++move) {
@@ -85,7 +87,13 @@ int main (int argc, char** argv) {
 	++succeeded;
       if (move % logPeriod == 0) {
 	if (logFolds)
-	  cerr << "Move " << move << ": " << board.foldString() << " " << board.foldEnergy() << " (" << to_string_join(board.unitCentroid()) << ")" << endl;
+	  cout << "Move " << move
+	       << " (" << fixed << setprecision(1) << (100. * move / moves) << "%) "
+	       << (logColors ? board.coloredFoldString() : board.foldString())
+	       << " " << setw(5) << board.foldEnergy()
+	       << " " << setw(5) << board.unitRadiusOfGyration()
+	       << " (" << to_string_join(board.unitCentroid()) << ")"
+	       << endl;
 	for (const auto& ij: board.indexPairs())
 	  ++pairCount[ij];
 	++samples;
@@ -125,7 +133,7 @@ int main (int argc, char** argv) {
       if (!outfile)
 	throw runtime_error ("Can't save board file");
       outfile << j << endl;
-    } else
+    } else if (!logFolds)
       cout << board.toJson() << endl;
 
   } catch (const exception& e) {

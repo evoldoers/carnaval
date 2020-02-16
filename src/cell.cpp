@@ -250,16 +250,16 @@ string Board::sequence() const {
   return s;
 }
 
+string Board::leftFoldChar ("<[{(abcdefghijklmnopqrstuvwxyz");
+string Board::rightFoldChar (">]})ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 string Board::foldString() const {
   string fs (unit.size(), '.');
-  const string leftChar  = "<[{(0123456789abcdefghijklmnopqrstuvwxyz";
-  const string rightChar = ">]})0123456789abcdefghijklmnopqrstuvwxyz";
   map<size_t,set<IndexPair>> offsetPairs;
   for (const auto& ij: indexPairs()) {
     const int i = ij.first, j = ij.second;
     //      cerr << ij.first << " <--> " << ij.second << endl;
     size_t offset;
-    for (offset = 0; offset < leftChar.size(); ++offset) {
+    for (offset = 0; offset < leftFoldChar.size(); ++offset) {
       bool intersects = false;
       for (const auto& op: offsetPairs[offset]) {
 	const int a = op.first, b = op.second;
@@ -272,14 +272,35 @@ string Board::foldString() const {
       if (!intersects)
 	break;
     }
-    if (offset < leftChar.size()) {
+    if (offset < leftFoldChar.size()) {
       offsetPairs[offset].insert (ij);
-      fs[ij.first] = leftChar[offset];
-      fs[ij.second] = rightChar[offset];
+      fs[ij.first] = leftFoldChar[offset];
+      fs[ij.second] = rightFoldChar[offset];
     } else
       cerr << "Not enough fold characters!" << endl;
   }
   return fs;
+}
+
+string Board::coloredFoldString() const {
+  const string fs = foldString();
+  vguard<int> col (fs.size(), 7);
+  int c = 1, last_i = -1, last_j = -1;
+  for (auto& ij: indexPairs()) {
+    if (last_i >= 0 && (ij.first != last_i + 1 || ij.second != last_j - 1))
+      c = (c % 6) + 1;
+    col[ij.first] = col[ij.second] = c;
+    last_i = ij.first;
+    last_j = ij.second;
+  }
+  string cfs;
+  cfs.reserve ((fs.size() + 1) * 6);
+  for (size_t pos = 0; pos < fs.size(); ++pos) {
+    const string ansi = string("\033[") + to_string(30+col[pos]) + "m" + fs[pos];
+    cfs.append (ansi);
+  }
+  cfs.append ("\033[37m");
+  return cfs;
 }
 
 double Board::foldEnergy() const {
@@ -305,4 +326,15 @@ vguard<double> Board::unitCentroid() const {
   for (size_t n = 0; n < 3; ++n)
     c[n] /= unit.size();
   return c;
+}
+
+double Board::unitRadiusOfGyration() const {
+  const vguard<double> c = unitCentroid();
+  double d2 = 0;
+  for (auto& u: unit)
+    for (size_t n = 0; n < 3; ++n) {
+      const double d = u.pos.xyz[n] - c[n]; 
+      d2 += d*d;
+    }
+  return sqrt (d2 / unit.size());
 }
