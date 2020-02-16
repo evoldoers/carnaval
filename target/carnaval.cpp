@@ -8,6 +8,7 @@
 #include <boost/program_options.hpp>
 
 #include "../src/cell.h"
+#include "../src/util.h"
 #include "../src/bitmap_image.hpp"
 
 using namespace std;
@@ -84,7 +85,7 @@ int main (int argc, char** argv) {
 	++succeeded;
       if (move % logPeriod == 0) {
 	if (logFolds)
-	  cerr << "Move " << move << ": " << board.foldString() << " " << board.foldEnergy() << endl;
+	  cerr << "Move " << move << ": " << board.foldString() << " " << board.foldEnergy() << " (" << to_string_join(board.unitCentroid()) << ")" << endl;
 	for (const auto& ij: board.indexPairs())
 	  ++pairCount[ij];
 	++samples;

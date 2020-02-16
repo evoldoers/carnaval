@@ -180,12 +180,16 @@ struct Board {
     return cell (v.x(), v.y(), v.z(), rev);
   }
 
-  vguard<IndexPair> indexPairs() const;
-  string sequence() const;
-  string foldString() const;
-  vguard<Vec> unitPos() const;
-  double foldEnergy() const;
   void assertLinear() const;
+
+  vguard<IndexPair> indexPairs() const;
+
+  string sequence() const;
+  vguard<Vec> unitPos() const;
+  vguard<double> unitCentroid() const;
+
+  string foldString() const;
+  double foldEnergy() const;
 };
 
 #endif /* CELL_INCLUDED */

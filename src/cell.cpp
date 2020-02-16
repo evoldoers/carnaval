@@ -296,3 +296,13 @@ vguard<Vec> Board::unitPos() const {
     up.push_back (u.pos);
   return up;
 }
+
+vguard<double> Board::unitCentroid() const {
+  vguard<double> c (3);
+  for (auto& u: unit)
+    for (size_t n = 0; n < 3; ++n)
+      c[n] += u.pos.xyz[n];
+  for (size_t n = 0; n < 3; ++n)
+    c[n] /= unit.size();
+  return c;
+}
