@@ -25,11 +25,11 @@ json Params::toJson() const {
 
 string Unit::alphabet ("acgu");
 
-Board::Board() : dist(0,1)
+Board::Board() : dist(0,1), baseDist(0,3)
 { }
 
 Board::Board (int xs, int ys, int zs)
-  : xSize(xs), ySize(ys), zSize(zs), cellStorage (2*xs*ys*zs, -1), dist(0,1)
+  : xSize(xs), ySize(ys), zSize(zs), cellStorage (2*xs*ys*zs, -1), dist(0,1), baseDist(0,3)
 {
   for (int x = -nbrRange(xs); x <= nbrRange(xs); ++x)
     for (int y = -nbrRange(ys); y <= nbrRange(ys); ++y)
@@ -52,10 +52,14 @@ Board Board::fromJson (json& j) {
 	       jp.count("rev") && jp["rev"].get<bool>(),
 	       index,
 	       ju.count("prev") ? ju["prev"].get<int>() : -1,
-	       ju.count("next") ? ju["next"].get<int>() : -1);
+	       -1);
     board.unit.push_back (unit);
     board.cell (unit.pos, unit.rev) = index;
   }
+  for (Unit& u: board.unit)
+    if (u.prev >= 0)
+      board.unit[u.prev].next = u.index;
+  board.assertValid();
   return board;
 }
 
@@ -76,9 +80,6 @@ json Board::toJson() const {
     }
     j["unit"] = units;
   }
-  j["fold"] = foldString();
-  j["energy"] = foldEnergy();
-  j["sequence"] = sequence();
   return j;
 }
 
@@ -105,6 +106,27 @@ void Board::addSeq (const string& seq) {
     unit.push_back (u);
     cell (u.pos, false) = index;
   }
+}
+
+void Board::addBases (double density, mt19937& mt) {
+  for (int x = 0; x < xSize; ++x)
+    for (int y = 0; y < ySize; ++y)
+      for (int z = 0; z < zSize; ++z)
+	if (cell(x,y,z,false) < 0
+	    && cell(x,y,z,true) < 0
+	    && dist(mt) < density) {
+	  const int index = unit.size();
+	  Unit u (baseDist(mt),
+		  x,
+		  y,
+		  z,
+		  false,
+		  index,
+		  -1,
+		  -1);
+	  unit.push_back (u);
+	  cell (u.pos, false) = index;
+	}
 }
 
 const Vec& Board::rndNbrVec (mt19937& mt) const {
@@ -184,6 +206,18 @@ bool Board::tryMove (mt19937& mt) {
 	    moveUnit (p, newPos, p.rev);
 	    //	    cerr << "Paired unit is now at " << p.pos << "." << p.rev << endl;
 	    moved = true;
+	  } else if (nbrIndex >= 0 && nbrPairIndex >= 0 && u.next < 0) {
+	    Unit& nbr = unit[nbrIndex];
+	    Unit& nbrp = unit[nbrPairIndex];
+	    if (p.prev == nbrIndex && nbrp.prev < 0) {
+	      nbrp.prev = index;
+	      u.next = nbrPairIndex;
+	      moved = true;
+	    } else if (p.prev == nbrPairIndex && nbr.prev < 0) {
+	      nbr.prev = index;
+	      u.next = nbrIndex;
+	      moved = true;
+	    }
 	  }
 	}
       } else {  // not paired
@@ -238,7 +272,7 @@ void Board::assertLinear() const {
   for (size_t i = 0; i < unit.size(); ++i) {
     const Unit& u = unit[i];
     if (u.index != i || (i > 0 && u.prev != i-1) || (i < unit.size()-1 && u.next != i+1))
-      throw runtime_error ("foldString requires single linear chain");
+      throw runtime_error ("Board does not contain a single linear chain");
   }
 }
 
@@ -337,4 +371,32 @@ double Board::unitRadiusOfGyration() const {
       d2 += d*d;
     }
   return sqrt (d2 / unit.size());
+}
+
+map<string,int> Board::sequenceFreqs() const {
+  map<string,int> seqFreq;
+  vguard<bool> unitSeen (unit.size());
+  int nSeen = 0;
+  for (int i = 0; i < unit.size(); ++i)
+    if (!unitSeen[i]) {
+      int j = i;
+      do {
+	const int k = unit[j].prev;
+	if (k < 0)
+	  break;
+	j = k;
+      } while (j != i);
+      // the above logic will handle circular sequences sort-of-correctly in that it won't go into an infinite loop, but neither will it return a canonical cyclic permutation
+      string s;
+      while (j >= 0 && !unitSeen[j]) {
+	unitSeen[j] = true;
+	s.push_back (unit[j].baseChar());
+	j = unit[j].next;
+	++nSeen;
+      }
+      ++seqFreq[s];
+    }
+  if (nSeen != unit.size())
+    throw runtime_error ("Missed Units");
+  return seqFreq;
 }

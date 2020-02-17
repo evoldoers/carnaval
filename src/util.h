@@ -29,8 +29,6 @@ void Fail(const char* error, ...);
 #define Assert(assertion,...) do { if (!(assertion)) Abort("Assertion Failed: " __VA_ARGS__); } while (0)
 #define Require(assertion,...) do { if (!(assertion)) Fail(__VA_ARGS__); } while (0)
 
-void CheckGsl (int gslErrorCode);
-
 /* singular or plural? */
 std::string plural (long n, const char* singular);
 std::string plural (long n, const char* singular, const char* plural);

@@ -55,7 +55,8 @@ struct Unit {
 struct Params {
   double splitProb;  // probability that a move is a split, given that the Unit is paired
   double stackEnergy, auEnergy, gcEnergy, guEnergy, temp;  // simplified basepair stacking model
-  Params() : splitProb(.5), stackEnergy(4), auEnergy(-2), gcEnergy(2), guEnergy(-3), temp(1) { }
+  double bondProb;  // probability that two adjacent template-bound monomers will form a covalent bond
+  Params() : splitProb(.5), stackEnergy(4), auEnergy(-2), gcEnergy(2), guEnergy(-3), temp(1), bondProb(.01) { }
   static Params fromJson (json&);
   json toJson() const;
 };
@@ -64,7 +65,8 @@ struct Board {
   typedef pair<int,int> IndexPair;
   vguard<int> cellStorage;
   vguard<Vec> neighborhood;
-  uniform_real_distribution<> dist;
+  uniform_real_distribution<> dist;  // real distribution over [0,1)
+  uniform_int_distribution<> baseDist;  // integer distribution over [0,4)
   static string leftFoldChar, rightFoldChar;
   inline static int boardCoord (int val, int size) {
     const int m = val % size;
@@ -92,6 +94,7 @@ struct Board {
   json toJson() const;
 
   void addSeq (const string&);  // adds sequence along x-axis starting at origin
+  void addBases (double, mt19937&);  // adds random monomeric bases with given density
   
   const Vec& rndNbrVec (mt19937&) const;
 
@@ -189,19 +192,19 @@ struct Board {
     return cell (v.x(), v.y(), v.z(), rev);
   }
 
+  // single-chain logging
   void assertLinear() const;
-
   vguard<IndexPair> indexPairs() const;
-
   string sequence() const;
   vguard<Vec> unitPos() const;
   vguard<double> unitCentroid() const;
   double unitRadiusOfGyration() const;
-
   string foldString() const;
   double foldEnergy() const;
-
   string coloredFoldString() const;
+
+  // multi-chain logging
+  map<string,int> sequenceFreqs() const;
 };
 
 #endif /* CELL_INCLUDED */

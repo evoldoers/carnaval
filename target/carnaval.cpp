@@ -25,11 +25,13 @@ int main (int argc, char** argv) {
       ("xsize,x", po::value<int>()->default_value(64), "size of board in X dimension")
       ("ysize,y", po::value<int>()->default_value(64), "size of board in Y dimension")
       ("zsize,z", po::value<int>()->default_value(1), "size of board in Z dimension")
-      ("init,i",  po::value<string>(), "specify initial sequence")
+      ("init,i",  po::value<string>(), "specify initial template sequence")
+      ("density,d",  po::value<double>(), "specify initial density of monomers")
       ("rnd,r",  po::value<int>(), "seed random number generator")
       ("total-moves,t",  po::value<long>()->default_value(0), "total number of moves")
       ("unit-moves,u",  po::value<long>()->default_value(0), "number of moves per unit")
-      ("folds,f",  "periodically log move count, fold string, energy, radius of gyration, and centroid")
+      ("folds,f",  "periodically log move count, fold string, energy, radius of gyration, and centroid (single-chain simulations only)")
+      ("seqs,S",  "periodically log sequences (for replication simulations)")
       ("monochrome,m",  "no ANSI color codes in logging, please")
       ("period,p", po::value<long>()->default_value(1000), "logging period")
       ("temp,T",  po::value<double>(), "specify temperature")
@@ -74,13 +76,21 @@ int main (int argc, char** argv) {
     if (vm.count("init"))
       board.addSeq (vm.at("init").as<string>());
 
+    if (vm.count("density"))
+      board.addBases (vm.at("density").as<double>(), mt);
+    
     if (vm.count("temp"))
       board.params.temp = vm.at("temp").as<double>();
 
-    const long moves = vm.at("total-moves").as<long>() + board.unit.size() * vm.at("unit-moves").as<long>();
-    const bool logFolds = vm.count("folds");
     const long logPeriod = vm.at("period").as<long>();
     const bool logColors = !vm.count("monochrome");
+    const bool logFolds = vm.count("folds");
+    const bool logSeqs = vm.count("seqs");
+    const bool countPairs = vm.count("bitmap") || vm.count("csv") || vm.count("json");
+    if (logFolds)
+      board.assertLinear();
+
+    const long moves = vm.at("total-moves").as<long>() + board.unit.size() * vm.at("unit-moves").as<long>();
     long succeeded = 0, samples = 0;
     map<Board::IndexPair,long> pairCount;
     for (long move = 0; move < moves; ++move) {
@@ -93,10 +103,19 @@ int main (int argc, char** argv) {
 	       << (logColors ? board.coloredFoldString() : board.foldString())
 	       << " " << setw(5) << board.foldEnergy()
 	       << " " << setw(5) << board.unitRadiusOfGyration()
-	       << " (" << to_string_join(board.unitCentroid()) << ")"
+	       << " (" << to_string_join (board.unitCentroid()) << ")"
 	       << endl;
-	for (const auto& ij: board.indexPairs())
-	  ++pairCount[ij];
+	if (logSeqs) {
+	  const auto seqFreqs = board.sequenceFreqs();
+	  cout << succeeded
+	       << " (" << fixed << setprecision(1) << (100. * move / moves) << "%)";
+	  for (auto& sf: seqFreqs)
+	    cout << " " << sf.first << "(" << sf.second << ")";
+	  cout << endl;
+	}
+	if (countPairs)
+	  for (const auto& ij: board.indexPairs())
+	    ++pairCount[ij];
 	++samples;
       }
     }
