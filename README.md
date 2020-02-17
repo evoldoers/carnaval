@@ -31,7 +31,8 @@ Simulation tests of the model reproduce experimentally determined RNA structure 
 
 Requirements:
 
-- A C++ compiler (C++11 or later)
-- [BOOST](https://www.boost.org/)
+- A C++ compiler (C++11 or later), e.g. [clang](https://clang.llvm.org/)
+- The [BOOST](https://www.boost.org/) library
+- GNU Make, or equivalent e.g. [BioMake](https://github.com/evoldoers/biomake)
 
 Type `make` and then `bin/carnaval -h`, and off you go.
