@@ -1,4 +1,5 @@
 #include <set>
+#include <algorithm>
 #include "cell.h"
 
 Params Params::fromJson (json& j) {
@@ -380,19 +381,30 @@ map<string,int> Board::sequenceFreqs() const {
   for (int i = 0; i < unit.size(); ++i)
     if (!unitSeen[i]) {
       int j = i;
-      do {
-	const int k = unit[j].prev;
-	if (k < 0)
+      bool cyclic = false;
+      while (unit[j].prev >= 0) {
+	j = unit[j].prev;
+	if (j == i) {
+	  cyclic = true;
 	  break;
-	j = k;
-      } while (j != i);
-      // the above logic will handle circular sequences sort-of-correctly in that it won't go into an infinite loop, but neither will it return a canonical cyclic permutation
+	}
+      }
       string s;
       while (j >= 0 && !unitSeen[j]) {
 	unitSeen[j] = true;
 	s.push_back (unit[j].baseChar());
 	j = unit[j].next;
 	++nSeen;
+      }
+      // if we have a circular sequence, find a canonical form by sorting cyclic permutations
+      if (cyclic) {
+	string canonical = s;
+	for (size_t k = 1; k < s.size(); ++k) {
+	  const string perm = s.substr(k,s.size()-k) + s.substr(0,k);
+	  if (perm < canonical)
+	    canonical = perm;
+	}
+	s = canonical + "*";
       }
       ++seqFreq[s];
     }

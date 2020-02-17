@@ -25,8 +25,13 @@ int main (int argc, char** argv) {
       ("xsize,x", po::value<int>()->default_value(64), "size of board in X dimension")
       ("ysize,y", po::value<int>()->default_value(64), "size of board in Y dimension")
       ("zsize,z", po::value<int>()->default_value(1), "size of board in Z dimension")
+      ("au",  po::value<double>(), "specify energy of A-U bond pairs")
+      ("gc",  po::value<double>(), "specify energy of G-C bond pairs")
+      ("gu",  po::value<double>(), "specify energy of G-U bond pairs")
+      ("stack",  po::value<double>(), "specify energy of base-pair stacking interactions")
       ("init,i",  po::value<string>(), "specify initial template sequence")
       ("density,d",  po::value<double>(), "specify initial density of monomers")
+      ("bond,B",  po::value<double>(), "specify polymerization rate (bond-formation probability)")
       ("rnd,r",  po::value<int>(), "seed random number generator")
       ("total-moves,t",  po::value<long>()->default_value(0), "total number of moves")
       ("unit-moves,u",  po::value<long>()->default_value(0), "number of moves per unit")
@@ -59,6 +64,7 @@ int main (int argc, char** argv) {
     mt19937 mt (seed);
     cerr << "Random seed is " << seed << endl;
 
+    // create Board
     Board board;
     if (vm.count("load")) {
       ifstream infile (vm.at("load").as<string>());
@@ -73,15 +79,33 @@ int main (int argc, char** argv) {
 		     vm["zsize"].as<int>());
     }
 
+    // initialization
     if (vm.count("init"))
       board.addSeq (vm.at("init").as<string>());
 
     if (vm.count("density"))
       board.addBases (vm.at("density").as<double>(), mt);
-    
+
+    // parameters
     if (vm.count("temp"))
       board.params.temp = vm.at("temp").as<double>();
 
+    if (vm.count("bond"))
+      board.params.bondProb = vm.at("bond").as<double>();
+
+    if (vm.count("stack"))
+      board.params.stackEnergy = vm.at("stack").as<double>();
+
+    if (vm.count("au"))
+      board.params.auEnergy = vm.at("au").as<double>();
+
+    if (vm.count("gc"))
+      board.params.gcEnergy = vm.at("gc").as<double>();
+
+    if (vm.count("gu"))
+      board.params.guEnergy = vm.at("gu").as<double>();
+    
+    // logging
     const long logPeriod = vm.at("period").as<long>();
     const bool logColors = !vm.count("monochrome");
     const bool logFolds = vm.count("folds");
@@ -90,6 +114,7 @@ int main (int argc, char** argv) {
     if (logFolds)
       board.assertLinear();
 
+    // do the simulation
     const long moves = vm.at("total-moves").as<long>() + board.unit.size() * vm.at("unit-moves").as<long>();
     long succeeded = 0, samples = 0;
     map<Board::IndexPair,long> pairCount;
@@ -120,6 +145,7 @@ int main (int argc, char** argv) {
       }
     }
 
+    // report results
     if (moves)
       cerr << "Tried " << moves << " moves, " << succeeded << " succeeded" << endl;
 
