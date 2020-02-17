@@ -1,4 +1,4 @@
-# CARNAVAL: Cellular Automata for RNA Virtual A-Life
+# CARNAVAL: Cellular Automata RNA for Virtual A-Life
 
 DNA and RNA are fundamental to biogenesis, nanotechnology, and artificial life.
 The [RNA World](https://en.wikipedia.org/wiki/RNA_world) hypothesis posits that self-replicating RNA emerged early from the primordial soup, concentrated within amphiphilic micelles or hydrothermal vents.
