@@ -36,3 +36,28 @@ Requirements:
 - GNU Make, or equivalent e.g. [BioMake](https://github.com/evoldoers/biomake)
 
 Type `make` and then `bin/carnaval -h`, and off you go.
+
+## Folding kinetics
+
+The most basic way to run CARNAVAL is as a simulation of RNA folding kinetics.
+Use `--init` to specify an RNA sequence, `--unit-moves` to specify the number of random steps per monomeric unit,
+and `--folds` to log progress.
+
+For example:
+
+~~~~
+bin/carnaval --init AAAAAAAAAGGGGGGGGGUUUUUUUUUCCCCC --unit-moves 100000000 --folds
+~~~~
+
+You can use `--csv`, `--json`, or `--bitmap` to save the posterior base-pairing probabilities in various formats.
+
+## Template-directed polymerization
+
+You can seed the space with monomers using `--density` and watch for the formation of sequences using `--seqs`:
+
+~~~~
+bin/carnaval --init AACCUUGG --density 0.1 --unit-moves 1000000 --seqs
+~~~~
+
+To experiment with the energy model and its effect on replication fidelity, use the options (e.g. `--gu` to change the wobble basepair energy)
+or edit the JSON file representing the state of the world, which you can read and write using `--load` and `--save`.
