@@ -10,6 +10,7 @@ Params Params::fromJson (json& j) {
   p.gcEnergy = j["gc"];
   p.guEnergy = j["gu"];
   p.temp = j["temp"];
+  p.bondProb = j["bond"];
   return p;
 }
 
@@ -21,6 +22,7 @@ json Params::toJson() const {
   j["gc"] = gcEnergy;
   j["gu"] = guEnergy;
   j["temp"] = temp;
+  j["bond"] = bondProb;
   return j;
 }
 
