@@ -85,8 +85,23 @@ obj/%.o: target/%.cpp
 
 $(CARNAVAL): bin/$(CARNAVAL)
 
+# Tests and measurements
+test: $(CARNAVAL)
+	$(SH) test/regress.sh
+
+bench: $(CARNAVAL)
+	python3 test/benchmark.py
+
+foldtime: $(CARNAVAL)
+	python3 test/foldtime.py
+
+foldtime-long: $(CARNAVAL)
+	python3 test/foldtime.py --long --seeds 12 --samples 500
+
 clean:
 	rm -rf bin/$(CARNAVAL) obj/*
 
 # Fake pseudotargets
 debug unoptimized:
+
+.PHONY: all install clean test bench foldtime foldtime-long debug unoptimized

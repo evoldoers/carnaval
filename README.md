@@ -154,3 +154,48 @@ the chain mixes freely. All three agree on every pair to within Monte Carlo
 error. At low temperature the chain mixes poorly enough that rare, long-lived
 conformations are not reliably estimated from a single trajectory, whichever
 sampler is used; run many seeds and compare matched constructs.
+
+## Tests and measurements
+
+~~~~
+make test            # correctness regression suite
+make bench           # tRNA throughput benchmark, checked against a recorded baseline
+make foldtime        # folding-time measurement for the tRNA and a hammerhead
+make foldtime-long   # the same at the run length used in the paper
+~~~~
+
+`make test` runs `test/regress.sh`, which checks that the board stays
+internally consistent across every feature combination, that a seed reproduces
+its trajectory, that a tethered board survives a JSON round trip with its
+surface sites and pinning intact, that `--bond` really gates ligation, that
+inert sites never leave their plane, and that `--dna` changes both the alphabet
+and the wobble rule. Board validity is checked by saving: `assertValid` runs
+inside `toJson`, so a successful save means cell occupancy and every chain link
+agree with the unit list.
+
+`make bench` folds the tRNA and reports attempted moves, accepted moves and
+sweeps per second. It compares against `test/baseline.json` and fails if
+accepted moves per second has regressed by more than a factor of two. Record a
+new baseline for a different machine with `python3 test/benchmark.py --update`.
+
+`make foldtime` measures two quantities that are easy to conflate. The first is
+the first-passage time to a reference structure: how many sweeps until each
+helix, and then all of them together, first appears. That is a distribution over
+seeds rather than a single number, and some seeds never arrive, so it is
+reported as a median and quartiles over the seeds that did alongside the
+fraction that did. No mean is given, because with censored runs a mean needs an
+assumed distribution. The second is the equilibration of the fold energy: how
+many sweeps until the seed-averaged energy stops drifting. The energy settles
+long before the reference structure is found, so it is the weaker claim.
+
+Reference constructs live in `test/constructs.py`. The tRNA is PDB entry 1ehz,
+with the sequence and the secondary structure taken from the paper's data
+(`carnaval-paper/data/1ehz.seq`, whose second line is the PDB annotation);
+parsing it gives the four canonical helices plus one tertiary pair. The
+hammerhead is a hammerhead-topology construct rather than a natural isolate: a
+three-way junction carrying the two published core consensus motifs as its
+junction linkers, a GNRA tetraloop on stem II as in the viral hammerheads, and a
+GUC cleavage triplet in the stem III loop. Its stems are designed, so the target
+structure is known by construction instead of relying on an annotation.
+Substituting a natural sequence means replacing the sequence and the helix pair
+lists, and wants an annotated structure for that isolate.
