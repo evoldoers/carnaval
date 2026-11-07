@@ -102,31 +102,53 @@ def quantile(sorted_vals, q):
 
 
 def censored_summary(times, n_total, budget):
-    """Summarize first-passage times where some runs never reached the target.
+    """Summarize first-passage times when some runs never reached the target.
 
-    Returns a dict with the observed quantiles and the censoring fraction.  No
-    mean is reported: with censored observations a mean is not defined without
-    assuming a distribution, and the spread here is wide enough that the median
-    is the honest summary.
+    Quantiles are taken over the FULL sample, with runs that never arrived
+    treated as values beyond the budget.  A quantile is only reported when the
+    order statistic it needs is an observed time; otherwise it is censored and
+    reported as None, meaning "longer than the budget".  Taking quantiles over
+    only the runs that arrived would bias every one of them downwards, which is
+    the easy mistake here: with half the runs censored the true median sits at
+    the budget boundary, not at the middle of the arrivals.
+
+    No mean is reported.  With a censored heavy tail the mean is not estimable
+    without assuming a distribution.
     """
     obs = sorted(t for t in times if t is not None)
     n_cens = n_total - len(obs)
+
+    def q(p):
+        if n_total == 0:
+            return None
+        # index into the full sample, ordered, censored values last
+        pos = p * (n_total - 1)
+        lo = int(math.floor(pos))
+        hi = min(lo + 1, n_total - 1)
+        if hi >= len(obs):          # the needed order statistic is censored
+            return None
+        if lo == hi:
+            return obs[lo]
+        return obs[lo] + (obs[hi] - obs[lo]) * (pos - lo)
+
     return {
         "n": n_total,
         "n_reached": len(obs),
         "n_censored": n_cens,
         "frac_reached": len(obs) / n_total if n_total else 0.0,
         "min": obs[0] if obs else None,
-        "q25": quantile(obs, 0.25),
-        "median": quantile(obs, 0.50),
-        "q75": quantile(obs, 0.75),
-        "max": obs[-1] if obs else None,
+        "q25": q(0.25),
+        "median": q(0.50),
+        "q75": q(0.75),
+        "max": obs[-1] if len(obs) == n_total else None,
+        "observed": obs,
         "budget": budget,
     }
 
 
 def fmt_sweeps(v):
-    return "never" if v is None else f"{v:,.0f}"
+    """None means the value is censored: beyond the simulated budget."""
+    return ">budget" if v is None else f"{v:,.0f}"
 
 
 def mean_sem(vals):

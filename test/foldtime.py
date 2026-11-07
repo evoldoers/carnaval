@@ -5,10 +5,12 @@ Reports two different things, which are easy to confuse:
 
   * First-passage time to the target structure.  How many sweeps until each
     reference helix, and then all of them together, first appear.  This is a
-    first-passage distribution over independent seeds, and some seeds never
-    arrive within the budget, so it is summarized by median and quartiles over
-    the seeds that did, alongside the fraction that did.  A mean would not be
-    defined without assuming a distribution for the censored runs.
+    censored first-passage distribution over independent seeds: some seeds
+    never arrive within the budget.  Quantiles are therefore taken over the
+    full sample with the non-arrivals ordered last, and a quantile whose order
+    statistic falls among them is reported as ">budget" rather than guessed.
+    No mean is reported, because a censored heavy tail has no estimable mean
+    without assuming a distribution.
 
   * Equilibration of the energy.  How many sweeps until the seed-averaged fold
     energy reaches a plateau.  The energy settles long before the reference
@@ -50,7 +52,7 @@ def equilibration(traces, frac=0.95, tail=0.2):
     return None, plateau, mean
 
 
-def report(construct, seeds, unit_moves, samples, require_core):
+def report(construct, seeds, unit_moves, samples, require_core, verbose=False):
     period = max(1, (unit_moves * len(construct["seq"])) // samples)
     nt = len(construct["seq"])
     runs = []
@@ -73,6 +75,9 @@ def report(construct, seeds, unit_moves, samples, require_core):
               f"{lib.fmt_sweeps(st['median']):>13} {lib.fmt_sweeps(st['q25']):>13} "
               f"{lib.fmt_sweeps(st['q75']):>13} {lib.fmt_sweeps(st['min']):>13} "
               f"{lib.fmt_sweeps(st['max']):>13}")
+        if verbose:
+            print(f"{'':<22}   arrivals: "
+                  + ", ".join(f"{t:,.0f}" for t in st["observed"]))
         return st
 
     for name, helix in construct["helices"].items():
@@ -109,13 +114,16 @@ def main():
     ap.add_argument("--long", action="store_true",
                     help="10x the budget, matching the run length used in the paper")
     ap.add_argument("--require-core", action="store_true")
+    ap.add_argument("--verbose", action="store_true",
+                    help="also list every observed first-passage time")
     args = ap.parse_args()
     if args.long:
         args.unit_moves *= 10
     names = list(CONSTRUCTS) if args.construct == "all" else [args.construct]
     seeds = list(range(1, args.seeds + 1))
     for name in names:
-        report(CONSTRUCTS[name], seeds, args.unit_moves, args.samples, args.require_core)
+        report(CONSTRUCTS[name], seeds, args.unit_moves, args.samples,
+               args.require_core, args.verbose)
     print()
     return 0
 

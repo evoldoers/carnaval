@@ -199,3 +199,50 @@ GUC cleavage triplet in the stem III loop. Its stems are designed, so the target
 structure is known by construction instead of relying on an annotation.
 Substituting a natural sequence means replacing the sequence and the helix pair
 lists, and wants an annotated structure for that isolate.
+
+### Measured results
+
+On one core of an Intel Xeon at 2.10GHz, folding the tRNA for 76 million
+attempted moves takes 1.33s, at 3.25M accepted moves per second and 753,000
+sweeps per second. That is the recorded baseline in `test/baseline.json`.
+
+Folding times, 12 seeds each, at the run length used in the paper: 10 million
+sweeps, which is 7.6 x 10^8 moves for the 76-base tRNA and 5.1 x 10^8 for the
+51-base hammerhead. Medians are over the full sample with non-arrivals ordered
+last, so ">budget" means more than half the seeds never got there.
+
+| target | seeds reaching | median (sweeps) | median (moves) | earliest arrival |
+|---|---|---|---|---|
+| tRNA D-arm | 10/12 | 310,000 | 23.6M | 20,000 |
+| tRNA anticodon arm | 9/12 | 760,000 | 57.8M | 40,000 |
+| tRNA T-arm | 11/12 | 1,220,000 | 92.7M | 80,000 |
+| tRNA acceptor stem | 10/12 | 4,160,000 | 316M | 600,000 |
+| tRNA all four helices | 6/12 | >budget | >7.6 x 10^8 | 1,120,000 |
+| tRNA tertiary pair | 4/12 | >budget | >7.6 x 10^8 | 420,000 |
+| hammerhead stem II | 12/12 | 100,000 | 5.1M | 20,000 |
+| hammerhead stem III | 8/12 | 490,000 | 25.0M | 20,000 |
+| hammerhead stem I | 12/12 | 930,000 | 47.4M | 20,000 |
+| hammerhead all three stems | 8/12 | 2,660,000 | 136M | 20,000 |
+| hammerhead stems + core unpaired | 7/12 | 6,190,000 | 316M | 20,000 |
+
+Three things are worth taking from this.
+
+The energy equilibrates far earlier than the structure. For the tRNA the
+seed-averaged fold energy reaches 95% of its plateau at 700,000 sweeps, which
+is 5.3 x 10^7 moves, roughly fourteen times sooner than the earliest run found
+all four helices. A plateaued energy means the simulation has stopped drifting,
+not that it has found the native fold. For the hammerhead the energy plateaus at
+300,000 sweeps, which is 1.5 x 10^7 moves.
+
+There is no usable expected time to the native tRNA structure. Half the seeds
+never assembled all four helices within the paper's budget, so the mean is
+unbounded by the data and the median only bounded below. Among the seeds that
+did arrive the spread was 1.1 to 9.7 million sweeps, nearly a factor of ten.
+Quote a median with its censoring fraction, not a mean.
+
+The long-range closing helix is the bottleneck in both molecules. The tRNA
+acceptor stem, which spans the whole chain, has a median first passage thirteen
+times that of the D-arm, and the hammerhead's closing stem I is nine times
+slower than its hairpin stem II. That ordering is what one would expect from a
+model with no bond rigidity term, where a long-range contact has to be found by
+undirected diffusion.
