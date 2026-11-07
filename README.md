@@ -206,43 +206,56 @@ On one core of an Intel Xeon at 2.10GHz, folding the tRNA for 76 million
 attempted moves takes 1.33s, at 3.25M accepted moves per second and 753,000
 sweeps per second. That is the recorded baseline in `test/baseline.json`.
 
-Folding times, 12 seeds each, at the run length used in the paper: 10 million
-sweeps, which is 7.6 x 10^8 moves for the 76-base tRNA and 5.1 x 10^8 for the
-51-base hammerhead. Medians are over the full sample with non-arrivals ordered
-last, so ">budget" means more than half the seeds never got there.
+Folding times, 16 seeds each, at a budget of 100 million sweeps: 7.6 x 10^9
+moves for the 76-base tRNA and 5.1 x 10^9 for the 51-base hammerhead. That is
+ten times the run length used in the paper, which is what it takes to make the
+medians estimable rather than censored. Quantiles are over the full sample with
+non-arrivals ordered last.
 
-| target | seeds reaching | median (sweeps) | median (moves) | earliest arrival |
-|---|---|---|---|---|
-| tRNA D-arm | 10/12 | 310,000 | 23.6M | 20,000 |
-| tRNA anticodon arm | 9/12 | 760,000 | 57.8M | 40,000 |
-| tRNA T-arm | 11/12 | 1,220,000 | 92.7M | 80,000 |
-| tRNA acceptor stem | 10/12 | 4,160,000 | 316M | 600,000 |
-| tRNA all four helices | 6/12 | >budget | >7.6 x 10^8 | 1,120,000 |
-| tRNA tertiary pair | 4/12 | >budget | >7.6 x 10^8 | 420,000 |
-| hammerhead stem II | 12/12 | 100,000 | 5.1M | 20,000 |
-| hammerhead stem III | 8/12 | 490,000 | 25.0M | 20,000 |
-| hammerhead stem I | 12/12 | 930,000 | 47.4M | 20,000 |
-| hammerhead all three stems | 8/12 | 2,660,000 | 136M | 20,000 |
-| hammerhead stems + core unpaired | 7/12 | 6,190,000 | 316M | 20,000 |
+| target | seeds reaching | median (sweeps) | median (moves) | q25 | q75 |
+|---|---|---|---|---|---|
+| tRNA T-arm | 16/16 | 462,500 | 3.5 x 10^7 | 118,750 | 3,281,250 |
+| tRNA D-arm | 16/16 | 525,000 | 4.0 x 10^7 | 150,000 | 2,568,750 |
+| tRNA anticodon arm | 16/16 | 1,687,500 | 1.3 x 10^8 | 262,500 | 5,800,000 |
+| tRNA acceptor stem | 16/16 | 2,162,500 | 1.6 x 10^8 | 787,500 | 7,518,750 |
+| tRNA all four helices | 15/16 | 13,512,500 | 1.0 x 10^9 | 2,337,500 | 43,143,750 |
+| tRNA tertiary pair | 11/16 | 61,387,500 | 4.7 x 10^9 | 28,200,000 | >budget |
+| hammerhead stem II | 16/16 | 100,000 | 5.1 x 10^6 | 43,750 | 300,000 |
+| hammerhead stem III | 16/16 | 512,500 | 2.6 x 10^7 | 25,000 | 17,618,750 |
+| hammerhead stem I | 16/16 | 1,250,000 | 6.4 x 10^7 | 318,750 | 2,125,000 |
+| hammerhead all three stems | 16/16 | 2,687,500 | 1.4 x 10^8 | 400,000 | 17,618,750 |
+| hammerhead stems + core unpaired | 16/16 | 6,312,500 | 3.2 x 10^8 | 1,543,750 | 26,750,000 |
 
-Three things are worth taking from this.
+Four things are worth taking from this.
 
-The energy equilibrates far earlier than the structure. For the tRNA the
-seed-averaged fold energy reaches 95% of its plateau at 700,000 sweeps, which
-is 5.3 x 10^7 moves, roughly fourteen times sooner than the earliest run found
-all four helices. A plateaued energy means the simulation has stopped drifting,
-not that it has found the native fold. For the hammerhead the energy plateaus at
-300,000 sweeps, which is 1.5 x 10^7 moves.
+The native tRNA fold takes about 10^9 moves to find, with a median of 13.5
+million sweeps. That is roughly 1.4 times the entire run length used in the
+paper, which lands near the 25th percentile of the distribution. The paper's
+figure of a tRNA structure recovered in 7.6 x 10^8 steps was therefore a
+better-than-median run, not a typical one.
 
-There is no usable expected time to the native tRNA structure. Half the seeds
-never assembled all four helices within the paper's budget, so the mean is
-unbounded by the data and the median only bounded below. Among the seeds that
-did arrive the spread was 1.1 to 9.7 million sweeps, nearly a factor of ten.
-Quote a median with its censoring fraction, not a mean.
+The distribution is extremely broad, and that matters more than the median.
+Arrivals at the full tRNA fold spanned 1.15 to 93.4 million sweeps, a factor of
+eighty, with an interquartile ratio of eighteen. Any single run tells you almost
+nothing. Quote a median over many seeds with its censoring fraction.
 
-The long-range closing helix is the bottleneck in both molecules. The tRNA
-acceptor stem, which spans the whole chain, has a median first passage thirteen
-times that of the D-arm, and the hammerhead's closing stem I is nine times
-slower than its hairpin stem II. That ordering is what one would expect from a
-model with no bond rigidity term, where a long-range contact has to be found by
-undirected diffusion.
+The energy plateau is itself budget-dependent, so "equilibrated" is not a
+property this measurement establishes. Raising the budget tenfold moved the
+tRNA plateau from 69.8 to 73.0 and the time to reach 95% of it from 700,000 to
+1,400,000 sweeps. The longer runs kept finding better structures, so the
+plateau is a lower bound that grows with the budget rather than a converged
+value. Treat the energy equilibration time as a floor, not an estimate.
+
+The long-range closing helix is the bottleneck, and the slow cases are
+bimodal rather than merely variable. The tRNA acceptor stem, which spans the
+whole chain, has a median first passage four times that of the T-arm. The
+hammerhead's stem III shows eight seeds arriving at the 25,000-sweep sampling
+floor and eight more spread from 975,000 to 74.8 million, which is kinetic
+trapping rather than a spread around a central value. That is the behaviour to
+expect from a model with no bond rigidity term, where a long-range contact has
+to be found by undirected diffusion.
+
+Even once folded, the target structure is not the whole ensemble. Over the
+whole run the tRNA spends 19.4% +- 3.7% of sampled time with all four helices
+present, and the hammerhead 76.6% +- 4.8% with all three stems. The tRNA figure
+is low partly because much of each run precedes first arrival.
