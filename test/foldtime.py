@@ -19,9 +19,13 @@ Reports two different things, which are easy to confuse:
     has found the native fold.
 
 One sweep is one attempted move per mobile unit, so moves = sweeps x length.
+--unit-moves is therefore the sweep budget directly.
+
+Seeds are independent, so they run concurrently; --jobs sets how many at once.
 """
 
 import argparse
+import concurrent.futures
 import os
 import sys
 
@@ -52,15 +56,15 @@ def equilibration(traces, frac=0.95, tail=0.2):
     return None, plateau, mean
 
 
-def report(construct, seeds, unit_moves, samples, require_core, verbose=False):
+def report(construct, seeds, unit_moves, samples, require_core, verbose=False, jobs=1):
     period = max(1, (unit_moves * len(construct["seq"])) // samples)
     nt = len(construct["seq"])
-    runs = []
-    traces = []
-    for seed in seeds:
-        s, _ = lib.run(construct, seed, unit_moves, period)
-        runs.append(s)
-        traces.append([(x.sweeps, x.energy) for x in s])
+    # Seeds are independent runs, so overlap them.  The work is all in the
+    # child process, so threads are enough to keep the cores busy.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
+        runs = list(pool.map(
+            lambda seed: lib.run(construct, seed, unit_moves, period)[0], seeds))
+    traces = [[(x.sweeps, x.energy) for x in r] for r in runs]
 
     budget = max(r[-1].sweeps for r in runs if r)
     print(f"\n=== {construct['name']}  ({nt} nt, {len(seeds)} seeds, "
@@ -109,7 +113,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--construct", default="all", choices=["all"] + list(CONSTRUCTS))
     ap.add_argument("--seeds", type=int, default=8)
-    ap.add_argument("--unit-moves", type=int, default=1000000)
+    ap.add_argument("--unit-moves", "--sweeps", type=int, default=1000000,
+                    dest="unit_moves",
+                    help="sweep budget per seed (moves per mobile unit)")
+    ap.add_argument("--jobs", "-j", type=int, default=0,
+                    help="seeds to run concurrently; 0 means one per CPU")
     ap.add_argument("--samples", type=int, default=400)
     ap.add_argument("--long", action="store_true",
                     help="10x the budget, matching the run length used in the paper")
@@ -119,11 +127,13 @@ def main():
     args = ap.parse_args()
     if args.long:
         args.unit_moves *= 10
+    if args.jobs <= 0:
+        args.jobs = max(1, (os.cpu_count() or 1))
     names = list(CONSTRUCTS) if args.construct == "all" else [args.construct]
     seeds = list(range(1, args.seeds + 1))
     for name in names:
         report(CONSTRUCTS[name], seeds, args.unit_moves, args.samples,
-               args.require_core, args.verbose)
+               args.require_core, args.verbose, args.jobs)
     print()
     return 0
 

@@ -96,7 +96,7 @@ foldtime: $(CARNAVAL)
 	python3 test/foldtime.py
 
 foldtime-long: $(CARNAVAL)
-	python3 test/foldtime.py --long --seeds 12 --samples 500
+	python3 test/foldtime.py --sweeps 100000000 --seeds 16 --samples 4000 --verbose
 
 clean:
 	rm -rf bin/$(CARNAVAL) obj/*
