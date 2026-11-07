@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Build output
+bin/
+obj/

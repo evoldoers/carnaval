@@ -61,3 +61,96 @@ bin/carnaval --init AACCUUGG --density 0.1 --unit-moves 1000000 --seqs
 
 To experiment with the energy model and its effect on replication fidelity, use the options (e.g. `--gu` to change the wobble basepair energy)
 or edit the JSON file representing the state of the world, which you can read and write using `--load` and `--save`.
+
+## Folding kinetics on a surface
+
+CARNAVAL can simulate strands tethered to an inert surface, which is the
+natural geometry for a microarray or a DNA origami tile.
+
+An `--surface` axis fills the plane at coordinate 0 normal to that axis with
+sites that never diffuse and never base-pair. They are pure excluded volume.
+`--tether` then places copies of the `--init` sequence on a grid of the given
+spacing, each covalently linked at its 5' end to a site in that plane, extending
+away from the surface:
+
+~~~~
+bin/carnaval -x 32 -y 32 -z 16 --dna --surface z --tether 4 --init GGCCAATTGC --unit-moves 100000
+~~~~
+
+That builds a 2D array of 64 tethered 10-mers on a 32x32 surface. Strands extend
+along z by default on a three-dimensional board, or along y on a flat one;
+`--tether-axis` overrides this.
+
+`--pin-first` is the lighter-weight alternative when you want a single strand
+held at one end without building a wall: it pins the first base of `--init` to
+its lattice site, leaving the rest of the chain free.
+
+`--dna` reads and writes T in place of U and forbids wobble pairs. `--no-wobble`
+forbids wobble pairs without changing the alphabet. Note that the energy model
+remains the simplified one described in the paper, with a single stacking term;
+it is not a nearest-neighbour parameterization, so it should be recalibrated
+before quantitative DNA work.
+
+## Polymerization is off by default
+
+`--bond` sets the probability that two adjacent template-bound monomers form a
+covalent bond. It now defaults to 0, so a plain folding simulation contains no
+ligase activity. Earlier versions parsed this parameter but never read it, and
+ligated unconditionally whenever the geometry allowed. To reproduce the
+template-directed replication described in the paper, set it explicitly:
+
+~~~~
+bin/carnaval --init AACCUUGG --density 0.1 --bond 1 --unit-moves 1000000 --seqs
+~~~~
+
+## Simulated time
+
+The simulator's native time unit is the Monte Carlo sweep: one attempted move
+per mobile unit. Sweeps are reported in the log and in saved board files, and
+are the only quantity that can be mapped onto an experiment.
+
+`--seconds-per-sweep` records such a mapping and makes the log and the JSON
+output carry an elapsed time in seconds alongside the sweep count. The value is
+not predicted by the model; it has to be fitted, by matching a simulated
+relaxation to a measured one. Until it is fitted, treat sweep counts as an
+arbitrary but internally consistent clock.
+
+## Performance notes
+
+Folding the 76-base tRNA for 76 million attempted moves, on one core:
+
+| build | wall time | accepted moves/s |
+|---|---|---|
+| previous release | 5.0s | 0.87M |
+| current | 1.5s | 2.83M |
+
+Three changes account for this. Board dimensions that are powers of two let the
+periodic wrap use a bit mask rather than an integer division, which matters
+because that wrap sits under every cell access. The chain-adjacency test, which
+rejected about 78% of all attempted moves and cost roughly a quarter of all
+retired instructions, is now a single bit test against a cached per-unit mask of
+legal directions; the mask depends only on where a unit's chain neighbours sit,
+so it is two table lookups to rebuild and is refreshed only for the few units a
+move can affect. The random number generator is xoshiro256++ rather than
+Mersenne Twister, which was itself over a quarter of retired instructions.
+
+Non-power-of-two boards still work and print a note suggesting otherwise.
+
+`--sort-units` renumbers units in lattice order for cache locality. It is a pure
+relabelling and leaves the Markov chain unchanged, but measured at only a few
+percent, so it is off by default.
+
+`--legal-moves-only` samples directions from the legal-move mask instead of
+rejecting illegal ones, with the Metropolis-Hastings correction for the altered
+proposal density. It preserves the equilibrium ensemble but changes the relative
+mobility of units, so it distorts kinetics. It also buys only about 20% more
+simulated time per second of compute, because each attempt becomes much more
+expensive. It is off by default and is not recommended unless you want
+equilibrium structure and do not care about rates.
+
+The samplers were checked against each other by comparing base-pairing
+probability matrices for a 12-base hairpin over 24 seeds at a temperature where
+the chain mixes freely. All three agree on every pair to within Monte Carlo
+error. At low temperature the chain mixes poorly enough that rare, long-lived
+conformations are not reliably estimated from a single trajectory, whichever
+sampler is used; run many seeds and compare matched constructs.
